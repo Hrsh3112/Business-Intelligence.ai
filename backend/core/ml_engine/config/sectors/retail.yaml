@@ -1,0 +1,317 @@
+sector_id: "RETAIL"
+sector_name: "Retail / E-Commerce"
+version: "2026-07-01"
+
+metrics:
+  - metric_id: "gross_margin"
+    display_name: "Gross Margin (%)"
+    category: "profitability"
+    unit: "percentage"
+    valid_min: -100.0
+    valid_max: 100.0
+    direction: "higher_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 42.0
+        std: 5.0
+        lower_bound: 15.0
+        upper_bound: 75.0
+    seasonality:
+      enabled: true
+      period: "quarterly"
+      amplitude: 2.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -3.0
+          std_adjustment: 1.0
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 2.5
+          std_adjustment: -0.5
+        - band: ">100M"
+          mean_adjustment: 4.0
+          std_adjustment: -1.0
+    correlation_group: "efficiency_profitability"
+    weight: 1.0
+    context_tags: ["retail_margin", "pricing_pressure", "margin_erosion"]
+
+  - metric_id: "inventory_turnover"
+    display_name: "Inventory Turnover (Ratio)"
+    category: "inventory_efficiency"
+    unit: "ratio"
+    valid_min: 0.0
+    valid_max: 100.0
+    direction: "higher_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 6.0
+        std: 1.5
+        lower_bound: 0.5
+        upper_bound: 20.0
+    seasonality:
+      enabled: true
+      period: "quarterly"
+      amplitude: 0.8
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -1.0
+          std_adjustment: 0.3
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 1.2
+          std_adjustment: 0.2
+        - band: ">100M"
+          mean_adjustment: 2.5
+          std_adjustment: 0.4
+    correlation_group: "efficiency_profitability"
+    weight: 0.95
+    context_tags: ["dead_stock", "inventory_velocity", "working_capital"]
+
+  - metric_id: "average_order_value"
+    display_name: "Average Order Value ($)"
+    category: "sales_efficiency"
+    unit: "currency_usd"
+    valid_min: 0.0
+    valid_max: 100000.0
+    direction: "higher_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 85.0
+        std: 20.0
+        lower_bound: 10.0
+        upper_bound: 1000.0
+    seasonality:
+      enabled: true
+      period: "quarterly"
+      amplitude: 15.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -15.0
+          std_adjustment: -4.0
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 20.0
+          std_adjustment: 5.0
+        - band: ">100M"
+          mean_adjustment: 45.0
+          std_adjustment: 10.0
+    correlation_group: "store_productivity"
+    weight: 0.85
+    context_tags: ["basket_size", "pricing_elasticity", "aov_drop"]
+
+  - metric_id: "revenue_per_sqft"
+    display_name: "Revenue per Sq Ft ($)"
+    category: "store_productivity"
+    unit: "currency_usd"
+    valid_min: 0.0
+    valid_max: 10000.0
+    direction: "higher_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 350.0
+        std: 80.0
+        lower_bound: 50.0
+        upper_bound: 2500.0
+    seasonality:
+      enabled: false
+      period: "quarterly"
+      amplitude: 0.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -50.0
+          std_adjustment: -10.0
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 60.0
+          std_adjustment: 15.0
+        - band: ">100M"
+          mean_adjustment: 120.0
+          std_adjustment: 25.0
+    correlation_group: "store_productivity"
+    weight: 0.8
+    context_tags: ["store_productivity", "footfall_efficiency", "retail_yield"]
+
+  - metric_id: "same_store_sales_growth"
+    display_name: "Same-Store Sales Growth (%)"
+    category: "sales_efficiency"
+    unit: "percentage"
+    valid_min: -100.0
+    valid_max: 200.0
+    direction: "higher_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 3.5
+        std: 2.0
+        lower_bound: -20.0
+        upper_bound: 30.0
+    seasonality:
+      enabled: true
+      period: "quarterly"
+      amplitude: 1.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: 1.0
+          std_adjustment: 0.8
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: -0.5
+          std_adjustment: -0.3
+        - band: ">100M"
+          mean_adjustment: -1.0
+          std_adjustment: -0.5
+    correlation_group: "store_productivity"
+    weight: 0.9
+    context_tags: ["comp_sales", "store_growth", "retail_velocity"]
+
+  - metric_id: "sell_through_rate"
+    display_name: "Sell-Through Rate (%)"
+    category: "inventory_efficiency"
+    unit: "percentage"
+    valid_min: 0.0
+    valid_max: 100.0
+    direction: "higher_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 65.0
+        std: 10.0
+        lower_bound: 20.0
+        upper_bound: 95.0
+    seasonality:
+      enabled: true
+      period: "quarterly"
+      amplitude: 5.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -5.0
+          std_adjustment: 2.0
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 3.0
+          std_adjustment: -1.0
+        - band: ">100M"
+          mean_adjustment: 6.0
+          std_adjustment: -2.0
+    correlation_group: "efficiency_profitability"
+    weight: 0.85
+    context_tags: ["inventory_clearance", "sell_through", "stock_efficiency"]
+
+  - metric_id: "customer_acquisition_cost"
+    display_name: "Customer Acquisition Cost ($)"
+    category: "sales_efficiency"
+    unit: "currency_usd"
+    valid_min: 0.0
+    valid_max: 10000.0
+    direction: "lower_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 35.0
+        std: 12.0
+        lower_bound: 5.0
+        upper_bound: 200.0
+    seasonality:
+      enabled: false
+      period: "quarterly"
+      amplitude: 0.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -10.0
+          std_adjustment: -3.0
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 15.0
+          std_adjustment: 4.0
+        - band: ">100M"
+          mean_adjustment: 30.0
+          std_adjustment: 8.0
+    correlation_group: "customer_acquisition"
+    weight: 0.85
+    context_tags: ["cac_inflation", "customer_acquisition", "ad_spend_efficiency"]
+
+  - metric_id: "return_rate"
+    display_name: "Return Rate (%)"
+    category: "operations"
+    unit: "percentage"
+    valid_min: 0.0
+    valid_max: 100.0
+    direction: "lower_is_better"
+    distribution:
+      type: "normal"
+      params:
+        mean: 8.0
+        std: 3.0
+        lower_bound: 0.5
+        upper_bound: 40.0
+    seasonality:
+      enabled: true
+      period: "quarterly"
+      amplitude: 2.0
+    size_scaling:
+      revenue_bands:
+        - band: "<1M"
+          mean_adjustment: -1.0
+          std_adjustment: 0.5
+        - band: "1M-10M"
+          mean_adjustment: 0.0
+          std_adjustment: 0.0
+        - band: "10M-100M"
+          mean_adjustment: 1.5
+          std_adjustment: 0.5
+        - band: ">100M"
+          mean_adjustment: 3.0
+          std_adjustment: 1.0
+    correlation_group: "operations"
+    weight: 0.8
+    context_tags: ["product_returns", "refund_rate", "return_leakage"]
+
+correlation_matrix:
+  gross_margin:
+    inventory_turnover: 0.52
+    same_store_sales_growth: 0.45
+    return_rate: -0.50
+  inventory_turnover:
+    gross_margin: 0.52
+    sell_through_rate: 0.65
+  average_order_value:
+    revenue_per_sqft: 0.60
+    customer_acquisition_cost: -0.40
+  revenue_per_sqft:
+    average_order_value: 0.60
+    same_store_sales_growth: 0.55
+  same_store_sales_growth:
+    gross_margin: 0.45
+    revenue_per_sqft: 0.55
+  sell_through_rate:
+    inventory_turnover: 0.65
+  customer_acquisition_cost:
+    average_order_value: -0.40
+  return_rate:
+    gross_margin: -0.50
+

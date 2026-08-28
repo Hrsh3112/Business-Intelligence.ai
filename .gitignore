@@ -1,0 +1,104 @@
+# ==============================================================================
+# Python Artifacts & Environments
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ==============================================================================
+# Node / Next.js / TypeScript
+# ==============================================================================
+node_modules/
+.next/
+out/
+/build
+.turbo/
+.turbopack/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+
+# Package manager files & debug logs
+.pnp
+.pnp.js
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+/coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Auto-generated agent docs (Next.js dev watcher)
+AGENTS.md
+CLAUDE.md
+
+# ==============================================================================
+# Environment & Secrets (Never commit credentials)
+# ==============================================================================
+.env
+.env*.local
+*.env
+*.env.local
+*.env.*.local
+!*.env.example
+*.pem
+*.key
+*.crt
+*.cert
+credentials.json
+service_account*.json
+
+# ==============================================================================
+# Internal Team Docs & Scratch
+# ==============================================================================
+.internal/
+scratch/
+feedback.jsonl
+*.log
+logs/
+
+# ==============================================================================
+# Operating System & IDEs
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
