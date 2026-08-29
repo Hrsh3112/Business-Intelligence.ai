@@ -100,6 +100,19 @@ async def run_pipeline(company_input: CompanyInput) -> ApiResponse:
     c1_ms = _ms(c1_start)
     logger.info("pipeline stage=c1 job_id=%s outcome=ok duration_ms=%s", job_id, c1_ms)
 
+    # ---------------- Persona hand-off (see shared.Persona) ----------------
+    # C1 drops CompanyInput.persona (its own schema is extra="ignore"), so the
+    # value cannot ride through on its own. Re-attach it here, additively, so
+    # C3 can read it. This is not "modifying an upstream value": nothing C1
+    # computed is touched, a field C1 never had is added. `report` is then the
+    # single object used everywhere below, including as the adapter's
+    # `original`, so the verbatim check still compares like with like.
+    #
+    # ⚠️ C3 does not read this yet — narrative prose is identical for both
+    # personas until c3_engine/narrative.py varies its prompt on it.
+    if company_input.persona is not None:
+        report = report.model_copy(update={"persona": company_input.persona.value})
+
     # ---------------- Refusal short-circuit (Contract §3) ----------------
     if report.refusal is not None:
         logger.info("pipeline stage=c3 job_id=%s outcome=skipped reason=refusal", job_id)

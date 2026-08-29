@@ -199,6 +199,10 @@ def build_company_input(
         reporting_period=ReportingPeriod(type=overall_granularity, start=start, end=end),
         metrics=entries,
         raw_text_context=form_metadata.raw_text_context,
+        # Carried inside CompanyInput so it can reach C3 without run_pipeline()
+        # taking a second argument. C1 drops it (extra="ignore"); the pipeline
+        # re-attaches it to the report afterwards. See shared.Persona.
+        persona=form_metadata.persona,
     )
 
     # Nothing usable survived. C2 must not hand C1 an empty metrics list: C1

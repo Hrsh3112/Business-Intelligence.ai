@@ -72,6 +72,49 @@ class RefusalReason(str, Enum):
     CONTRADICTORY_EVIDENCE = "contradictory_evidence"
 
 
+class Persona(str, Enum):
+    """Who the report is being produced for.
+
+    ⚠️ C2-PROPOSED ADDITION TO THE SHARED SCHEMA — NOT SIGNED OFF.
+    The only field C2 has added to this file. Recorded in full because the
+    next person to read it needs the whole story.
+
+    WHY IT IS HERE. The problem statement requires at least two personas
+    receiving different narratives. The narrative is C3's, generated from an
+    AnomalyReport. For a persona to influence that prose it must reach the C3
+    call, and the only route that does not breach C2's architectural boundary
+    (`run_pipeline()` takes a CompanyInput and nothing else) is to carry it
+    inside the CompanyInput. Hence a field on the shared contract.
+
+    WHY IT IS SAFE FOR C1. `ml_engine.models.input_schema.CompanyInput`
+    declares no `model_config`, so Pydantic v2's default `extra="ignore"`
+    applies: `orchestration/c1_adapter.py` dumps and revalidates through that
+    model, and this field is dropped before C1 ever sees it. Verified against
+    C1's source. C1 needs no change and cannot break on this.
+
+    HOW IT REACHES C3. Because C1 drops it, C2 re-attaches it to the
+    AnomalyReport after C1 returns and before calling C3 (see
+    `orchestration/pipeline.py`). C3's own AnomalyReport model sets
+    `extra="allow"`, so it survives that crossing.
+
+    ⚠️ THIS FIELD DOES NOTHING ON ITS OWN — C3 MUST STILL ACT.
+    `c3_engine/narrative.py` builds a single prompt and has no persona
+    concept, so today the value arrives and is ignored: narrative prose is
+    IDENTICAL for both personas. C3 must read `anomaly_report.persona` and
+    vary the prompt before the requirement is actually met. Until then, do
+    not claim persona-tailored narratives in the deck or the demo. C2's own
+    persona work is a rendering/entitlement distinction — a different, and
+    separately defensible, claim.
+
+    SEMANTIC CAVEAT. This describes the reader, not the company, so it sits
+    oddly on CompanyInput. It is here because it is the only
+    boundary-respecting route, not because it is the tidiest home.
+    """
+
+    EXECUTIVE = "executive"
+    ANALYST = "analyst"
+
+
 # ---------------------------------------------------------------------------
 # Contract 1 — CompanyInput (Contract §4)
 # produced by C2, consumed by C1. Schema owned by C1.
@@ -113,6 +156,12 @@ class CompanyInput(BaseModel):
     reporting_period: ReportingPeriod
     metrics: list[MetricEntry]
     raw_text_context: Optional[str] = None
+    # ⚠️ C2-PROPOSED, UNSIGNED — see the Persona docstring above for the full
+    # rationale, the C1 safety argument, and what C3 must still implement.
+    # Optional with a None default on purpose: absent means "not declared"
+    # (e.g. a direct POST /analyze), which is different from asserting a
+    # persona for every submission. C2's own default lives on FormMetadata.
+    persona: Optional[Persona] = None
 
 
 # ---------------------------------------------------------------------------

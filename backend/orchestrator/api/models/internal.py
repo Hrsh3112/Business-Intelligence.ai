@@ -7,7 +7,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from api.models.shared import CompanyInput, EnrichedReport, RevenueBand, SectorId
+from api.models.shared import CompanyInput, EnrichedReport, Persona, RevenueBand, SectorId
 
 
 class ParseWarningCode(str, Enum):
@@ -101,27 +101,6 @@ class ValidateResponse(BaseModel):
     blocking_errors: list[str] = []
     inferred: InferredMetadata = InferredMetadata()
     ready: bool = False
-
-
-class Persona(str, Enum):
-    """Who is reading this report (Stage 5; critique P0 #1, P1 #8).
-
-    ROUTING NOTE — read before extending this. Persona does NOT reach C3, and
-    cannot today. C3's narrative is generated from an AnomalyReport, and for a
-    persona to influence that prose it would have to travel either on
-    `CompanyInput` (api/models/shared.py — the cross-team schema, which C2 does
-    not modify) or as a second argument to `run_pipeline()` (which by contract
-    takes a CompanyInput and nothing else). Both are cross-team decisions, not
-    C2's to make unilaterally.
-
-    So persona is currently a C2 concern end to end: it selects WHAT each
-    reader is shown, not what the model writes. The narrative prose is
-    identical across personas, and the UI says so rather than implying
-    tailoring we did not do.
-    """
-
-    EXECUTIVE = "executive"
-    ANALYST = "analyst"
 
 
 class FormMetadata(BaseModel):

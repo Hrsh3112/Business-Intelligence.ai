@@ -7,6 +7,7 @@ freshness date we computed is evidence; a source label the user typed is a
 claim, and the two must never be presented as the same thing.
 """
 
+import asyncio
 import json
 
 import pytest
@@ -14,7 +15,14 @@ from fastapi.testclient import TestClient
 
 from api.config.settings import settings
 from api.main import app
+from api.mocks.mock_c3 import MockC3
 from api.models.internal import FormMetadata
+from api.models.shared import Persona
+from api.orchestration import pipeline as pipeline_module
+from api.orchestration.c1_adapter import adapt_company_input_for_c1
+from api.orchestration.pipeline import run_pipeline
+from api.parsing.builder import build_company_input
+from api.parsing.ingest import ingest_csv
 from api.parsing.lineage import build_source_manifest
 from api.tests.fixtures.builders import FIXTURE_BUILDERS
 
@@ -162,3 +170,55 @@ class TestPersona:
             )
 
         assert signature(exec_body) == signature(analyst_body)
+
+
+class TestPersonaReachesC3:
+    """The transport chain for the one field C2 added to the shared schema.
+
+    Each hop is pinned because the chain is non-obvious: persona rides inside
+    CompanyInput, is DROPPED by C1's own schema, and is re-attached by the
+    pipeline so C3 can see it. Break any hop and the failure is silent.
+    """
+
+    def test_persona_travels_on_company_input(self):
+        table = ingest_csv(CLEAN_CSV, "clean.csv")
+        form = FormMetadata.model_validate_json(_meta(persona="analyst"))
+        result = build_company_input(table, form)
+        assert result.company_input.persona == Persona.ANALYST
+
+    def test_c1_adapter_drops_it_without_raising(self):
+        # The safety argument for touching shared.py: ml_engine's CompanyInput
+        # sets no model_config, so extra="ignore" applies and C1 never sees
+        # this field. If C1 ever switches to extra="forbid", this test is where
+        # it surfaces instead of at the demo.
+        company_input, _ = FIXTURE_BUILDERS["critical"]()
+        with_persona = company_input.model_copy(update={"persona": Persona.ANALYST})
+        adapted = adapt_company_input_for_c1(with_persona)
+        assert adapted is not None
+
+    def test_pipeline_attaches_persona_to_the_report_handed_to_c3(self):
+        company_input, _ = FIXTURE_BUILDERS["critical"]()
+        with_persona = company_input.model_copy(update={"persona": Persona.ANALYST})
+
+        seen = {}
+
+        def _capture_c3():
+            def _enrich(report):
+                seen["persona"] = getattr(report, "persona", None)
+                return MockC3(sleep_s=0).enrich_report(report)
+
+            return _enrich
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(settings, "MOCK_SCENARIO", "critical")
+            mp.setattr(pipeline_module, "get_c3", _capture_c3)
+            asyncio.run(run_pipeline(with_persona))
+
+        # What C3 would read today if it looked. It does not look yet.
+        assert seen["persona"] == "analyst"
+
+    def test_absent_persona_leaves_the_report_untouched(self):
+        company_input, _ = FIXTURE_BUILDERS["critical"]()
+        assert company_input.persona is None
+        response = asyncio.run(run_pipeline(company_input))
+        assert getattr(response.result.anomaly_report, "persona", None) is None

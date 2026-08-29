@@ -269,6 +269,7 @@ export interface components {
             metrics: components["schemas"]["MetricEntry"][];
             /** Raw Text Context */
             raw_text_context?: string | null;
+            persona?: components["schemas"]["Persona"] | null;
         };
         /** CompanyMetadata */
         CompanyMetadata: {
@@ -682,20 +683,42 @@ export interface components {
         ParseWarningCode: "UNKNOWN_METRIC" | "UNIT_SCALE_SUSPECT" | "OUT_OF_RANGE" | "SHORT_SERIES" | "INTERPOLATED_POINTS" | "SECTOR_MISMATCH" | "AMBIGUOUS_MAPPING" | "SCHEMA_VALIDATION_ERROR" | "DATE_TRUNCATED" | "TWO_DIGIT_YEAR_FUTURE" | "AMBIGUOUS_NUMBER_FORMAT" | "MIXED_GRANULARITY" | "AMBIGUOUS_SHAPE" | "SERIES_TRIMMED" | "INTERPOLATION_HEAVY" | "CONSTANT_SERIES" | "SPARSE_SERIES" | "DUPLICATE_PERIOD" | "REFUSAL_LIKELY";
         /**
          * Persona
-         * @description Who is reading this report (Stage 5; critique P0 #1, P1 #8).
+         * @description Who the report is being produced for.
          *
-         *     ROUTING NOTE — read before extending this. Persona does NOT reach C3, and
-         *     cannot today. C3's narrative is generated from an AnomalyReport, and for a
-         *     persona to influence that prose it would have to travel either on
-         *     `CompanyInput` (api/models/shared.py — the cross-team schema, which C2 does
-         *     not modify) or as a second argument to `run_pipeline()` (which by contract
-         *     takes a CompanyInput and nothing else). Both are cross-team decisions, not
-         *     C2's to make unilaterally.
+         *     ⚠️ C2-PROPOSED ADDITION TO THE SHARED SCHEMA — NOT SIGNED OFF.
+         *     The only field C2 has added to this file. Recorded in full because the
+         *     next person to read it needs the whole story.
          *
-         *     So persona is currently a C2 concern end to end: it selects WHAT each
-         *     reader is shown, not what the model writes. The narrative prose is
-         *     identical across personas, and the UI says so rather than implying
-         *     tailoring we did not do.
+         *     WHY IT IS HERE. The problem statement requires at least two personas
+         *     receiving different narratives. The narrative is C3's, generated from an
+         *     AnomalyReport. For a persona to influence that prose it must reach the C3
+         *     call, and the only route that does not breach C2's architectural boundary
+         *     (`run_pipeline()` takes a CompanyInput and nothing else) is to carry it
+         *     inside the CompanyInput. Hence a field on the shared contract.
+         *
+         *     WHY IT IS SAFE FOR C1. `ml_engine.models.input_schema.CompanyInput`
+         *     declares no `model_config`, so Pydantic v2's default `extra="ignore"`
+         *     applies: `orchestration/c1_adapter.py` dumps and revalidates through that
+         *     model, and this field is dropped before C1 ever sees it. Verified against
+         *     C1's source. C1 needs no change and cannot break on this.
+         *
+         *     HOW IT REACHES C3. Because C1 drops it, C2 re-attaches it to the
+         *     AnomalyReport after C1 returns and before calling C3 (see
+         *     `orchestration/pipeline.py`). C3's own AnomalyReport model sets
+         *     `extra="allow"`, so it survives that crossing.
+         *
+         *     ⚠️ THIS FIELD DOES NOTHING ON ITS OWN — C3 MUST STILL ACT.
+         *     `c3_engine/narrative.py` builds a single prompt and has no persona
+         *     concept, so today the value arrives and is ignored: narrative prose is
+         *     IDENTICAL for both personas. C3 must read `anomaly_report.persona` and
+         *     vary the prompt before the requirement is actually met. Until then, do
+         *     not claim persona-tailored narratives in the deck or the demo. C2's own
+         *     persona work is a rendering/entitlement distinction — a different, and
+         *     separately defensible, claim.
+         *
+         *     SEMANTIC CAVEAT. This describes the reader, not the company, so it sits
+         *     oddly on CompanyInput. It is here because it is the only
+         *     boundary-respecting route, not because it is the tidiest home.
          * @enum {string}
          */
         Persona: "executive" | "analyst";
