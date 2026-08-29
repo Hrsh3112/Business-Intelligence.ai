@@ -32,7 +32,11 @@ def test_valid_body_returns_200_complete():
     response = client.post("/analyze", json=_valid_body())
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "complete"
+    # Name the failure rather than just reporting "not complete". This test has
+    # been seen to fail on a heavily loaded machine (a run 4-13x slower than
+    # normal), and a bare status assertion gave no way to tell a C1_TIMEOUT
+    # from anything else. If it trips again, the message says which.
+    assert body["status"] == "complete", f"error={body.get('error')} timings={body.get('timings')}"
     assert body["result"]["narrative"] is not None
 
 

@@ -19,11 +19,7 @@ export function Narrative({ narrative }: NarrativeProps) {
   if (!narrative) return null;
 
   const sortedActions = [...narrative.prioritized_actions].sort(
-    (a, b) => {
-      const prioA = (a as any).impact ?? a.priority ?? "LOW";
-      const prioB = (b as any).impact ?? b.priority ?? "LOW";
-      return (PRIORITY_ORDER[prioA] ?? 99) - (PRIORITY_ORDER[prioB] ?? 99);
-    }
+    (a, b) => (PRIORITY_ORDER[a.impact] ?? 99) - (PRIORITY_ORDER[b.impact] ?? 99)
   );
 
   return (
@@ -48,30 +44,20 @@ export function Narrative({ narrative }: NarrativeProps) {
         <div>
           <h3 className="text-sm font-medium tracking-wide text-ink-muted uppercase">Prioritized actions</h3>
           <ul className="mt-2 space-y-2">
-            {sortedActions.map((action, i) => {
-              const impact = (action as any).impact ?? action.priority;
-              const effort = (action as any).effort;
-              const title = (action as any).title ?? action.action;
-              const desc = (action as any).description ?? action.rationale;
-              return (
-                <li key={i} className="flex items-start gap-3 border-b border-rule pb-2 last:border-0">
-                  <div className="flex flex-col gap-1">
-                    <span className="mt-0.5 shrink-0 rounded-sm border border-rule px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-ink-muted uppercase">
-                      {impact}
-                    </span>
-                    {effort && (
-                      <span className="text-[10px] text-ink-muted text-center">
-                        Effort: {effort}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-ink">{title}</p>
-                    <p className="mt-0.5 text-sm text-ink-muted">{desc}</p>
-                  </div>
-                </li>
-              );
-            })}
+            {sortedActions.map((action, i) => (
+              <li key={i} className="flex items-start gap-3 border-b border-rule pb-2 last:border-0">
+                <div className="flex flex-col gap-1">
+                  <span className="mt-0.5 shrink-0 rounded-sm border border-rule px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-ink-muted uppercase">
+                    {action.impact}
+                  </span>
+                  <span className="text-center text-[10px] text-ink-muted">Effort: {action.effort}</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink">{action.title}</p>
+                  <p className="mt-0.5 text-sm text-ink-muted">{action.description}</p>
+                </div>
+              </li>
+            ))}
           </ul>
         </div>
       )}

@@ -25,11 +25,16 @@ import logging
 import time
 import uuid
 
+from api.config.pricing import estimate_cost
 from api.config.settings import settings
 from api.models.internal import ApiResponse, ErrorCode, Timings
 from api.models.shared import CompanyInput
 from api.orchestration.adapters import C3ContractViolation, adapt_c3_output
-from api.orchestration.c1_adapter import adapt_c1_output, adapt_company_input_for_c1
+from api.orchestration.c1_adapter import (
+    C1InputAdapterError,
+    adapt_c1_output,
+    adapt_company_input_for_c1,
+)
 from api.orchestration.degradation import wrap_bare_report
 from api.orchestration.resolver import get_c1, get_c3
 
@@ -68,6 +73,20 @@ async def run_pipeline(company_input: CompanyInput) -> ApiResponse:
             ErrorCode.C1_TIMEOUT.value,
         )
         return _finish_failed(job_id, t0, c1_ms, ErrorCode.C1_TIMEOUT)
+    except C1InputAdapterError:
+        # The input never reached C1 — it was unusable before dispatch (today:
+        # an empty metrics list). Routing this to C1_FAILED would blame C1 for
+        # a submission problem and tell the user nothing. /analyze/upload
+        # blocks this case earlier with the per-column reasons; this is the
+        # backstop for a hand-rolled POST /analyze body.
+        c1_ms = _ms(c1_start)
+        logger.warning(
+            "pipeline stage=c1 job_id=%s outcome=not_dispatched duration_ms=%s error=%s",
+            job_id,
+            c1_ms,
+            ErrorCode.NO_USABLE_METRICS.value,
+        )
+        return _finish_failed(job_id, t0, c1_ms, ErrorCode.NO_USABLE_METRICS)
     except Exception:
         c1_ms = _ms(c1_start)
         logger.exception(
@@ -93,6 +112,10 @@ async def run_pipeline(company_input: CompanyInput) -> ApiResponse:
             status="refused",
             result=wrap_bare_report(report, degraded=False, reason=None),
             timings=Timings(c1_ms=c1_ms, c3_ms=None, total_ms=total_ms),
+            # Deliberately populated, not left null: on the refusal path this
+            # states positively that no LLM ran and nothing was spent, which is
+            # the whole point of short-circuiting before C3.
+            cost=estimate_cost(None, None),
         )
 
     # ---------------- Stage 2: C3 ----------------
@@ -146,6 +169,9 @@ async def run_pipeline(company_input: CompanyInput) -> ApiResponse:
         status="complete",
         result=enriched,
         timings=Timings(c1_ms=c1_ms, c3_ms=c3_ms, total_ms=total_ms),
+        # Degraded runs land here too: if the LLM failed, tokens are null and
+        # estimate_cost() reports no figure rather than inventing a zero.
+        cost=estimate_cost(enriched.metadata.llm_model, enriched.metadata.llm_tokens_used),
     )
 
 

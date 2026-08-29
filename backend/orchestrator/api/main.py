@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from api.models.internal import ApiResponse, ErrorCode, ParseWarning, ParseWarningCode, ValidateResponse
 from api.orchestration.adapters import C3ContractViolation
-from api.routes import analyze, health, validate
+from api.routes import analyze, feedback, health, validate
 
 # Root logger has no handler by default, so api.orchestration.pipeline's
 # structured stage logs (T1.6) would be silently dropped without this.
@@ -41,6 +41,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(analyze.router)
 app.include_router(validate.router)
+app.include_router(feedback.router)
 
 
 @app.exception_handler(RequestValidationError)

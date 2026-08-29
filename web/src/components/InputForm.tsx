@@ -25,6 +25,7 @@ export function InputForm({ onSubmit, isSubmitting }: InputFormProps) {
   const [employeeCount, setEmployeeCount] = useState("");
   const [annualRevenue, setAnnualRevenue] = useState("");
   const [region, setRegion] = useState("");
+  const [sourceSystem, setSourceSystem] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
   const revenueNumber = annualRevenue.trim() === "" ? null : Number(annualRevenue);
@@ -41,6 +42,9 @@ export function InputForm({ onSubmit, isSubmitting }: InputFormProps) {
       employee_count: Number(employeeCount),
       region,
       annual_revenue: revenueNumber,
+      // Left null rather than defaulted: the backend then records the source
+      // as inferred-from-filename instead of claiming the user declared it.
+      source_system: sourceSystem.trim() === "" ? null : sourceSystem.trim(),
     });
   };
 
@@ -104,6 +108,18 @@ export function InputForm({ onSubmit, isSubmitting }: InputFormProps) {
           />
         </Field>
       </div>
+
+      <Field
+        label="Source system (optional)"
+        hint="e.g. “ERP export (monthly)”. Left blank, we record the filename instead."
+      >
+        <input
+          className="w-full rounded-sm border border-rule bg-white px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          value={sourceSystem}
+          onChange={(e) => setSourceSystem(e.target.value)}
+          maxLength={120}
+        />
+      </Field>
 
       <Field label="Metrics file (CSV)">
         <input

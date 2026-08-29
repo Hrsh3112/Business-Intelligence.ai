@@ -120,7 +120,9 @@ class MockC3:
                 prioritized_actions=[
                     ActionItem(
                         title=f"Investigate {a.metric_display_name}",
-                        description=f"A {a.severity_label} anomaly was detected in {a.metric_display_name}. Flagged for review.",
+                        # .value, not the enum: an f-string on SeverityLabel
+                        # renders "SeverityLabel.SEVERE" into user-facing copy.
+                        description=f"A {a.severity_label.value} anomaly was detected in {a.metric_display_name}. Flagged for review.",
                         impact=_PRIORITY_BY_SEVERITY.get(a.severity_label, "MEDIUM"),
                         effort="MEDIUM",
                     )

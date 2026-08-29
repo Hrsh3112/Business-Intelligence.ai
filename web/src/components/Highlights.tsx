@@ -30,7 +30,11 @@ export function Highlights({ highlights }: HighlightsProps) {
             <li key={i} className="rounded-sm border border-rule bg-white/30 p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-medium text-ink">{displayName}</p>
-                <span className="data text-xs text-ink-muted">{highlight.percentile.toFixed(0)}th pct</span>
+                {/* percentile is optional on C1's side — omit the badge
+                    rather than render "null th pct". */}
+                {highlight.percentile != null && (
+                  <span className="data text-xs text-ink-muted">{highlight.percentile.toFixed(0)}th pct</span>
+                )}
               </div>
               <p className="mt-1 text-xs text-ink-muted">{highlight.note}</p>
             </li>

@@ -19,13 +19,20 @@ from api.models.shared import CompanyInput
 from api.orchestration.pipeline import run_pipeline
 from api.parsing.builder import build_company_input
 from api.parsing.ingest import IngestError, ingest_csv
+from api.parsing.lineage import build_source_manifest
 
 router = APIRouter()
 
 
 @router.post("/analyze", response_model=ApiResponse)
 async def analyze(company_input: CompanyInput) -> ApiResponse:
-    return await run_pipeline(company_input)
+    response = await run_pipeline(company_input)
+    # Attached here, not inside run_pipeline(): the orchestrator takes a
+    # CompanyInput and nothing else, and building a manifest is response
+    # assembly, which is the route's job. There is no FormMetadata on this
+    # path, so sources come back "unknown" while grain and freshness — which
+    # are computed, not declared — are still fully populated.
+    return response.model_copy(update={"source_manifest": build_source_manifest(company_input)})
 
 
 def _failed_before_pipeline(message: str) -> ApiResponse:
@@ -62,15 +69,33 @@ async def analyze_upload(
         return _failed_before_pipeline(str(exc))
 
     result = build_company_input(raw_table, form_metadata, overrides)
-    if result.blocking_errors:
+
+    def _blocked(error: ErrorCode) -> ApiResponse:
         return ApiResponse(
             job_id=str(uuid.uuid4()),
             status="failed",
-            error=ErrorCode.VALIDATION_ERROR,
+            error=error,
             warnings=result.warnings
             + [ParseWarning(code=ParseWarningCode.SCHEMA_VALIDATION_ERROR, message=e) for e in result.blocking_errors],
         )
 
+    # Checked before the generic blocking-error branch so the empty-metrics
+    # case gets its own code: the pipeline is never started, C1 never sees
+    # metrics: [], and every per-column exclusion reason rides along in
+    # `warnings` for the UI to explain.
+    if result.company_input is None or not result.company_input.metrics:
+        return _blocked(ErrorCode.NO_USABLE_METRICS)
+
+    if result.blocking_errors:
+        return _blocked(ErrorCode.VALIDATION_ERROR)
+
     response = await run_pipeline(result.company_input)
     # Parse warnings must survive the pipeline, not be dropped at the handoff.
-    return response.model_copy(update={"warnings": result.warnings + response.warnings})
+    return response.model_copy(
+        update={
+            "warnings": result.warnings + response.warnings,
+            "source_manifest": build_source_manifest(
+                result.company_input, form_metadata, upload_filename=file.filename
+            ),
+        }
+    )

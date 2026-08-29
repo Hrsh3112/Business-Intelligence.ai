@@ -15,7 +15,9 @@ fi
 
 echo ""
 echo "[1/2] Launching Backend API on http://localhost:8000..."
-(cd backend && python -m uvicorn api.main:app --reload --port 8000) &
+# PYTHONPATH mirrors backend/pytest.ini, so `api`, `ml_engine` and `c3_engine`
+# resolve from a clean clone without `pip install -e backend` first.
+(cd backend && PYTHONPATH="core:enrichment:orchestrator" python -m uvicorn api.main:app --reload --port 8000) &
 BACKEND_PID=$!
 
 echo "[2/2] Launching Frontend on http://localhost:3000..."

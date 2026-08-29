@@ -1,4 +1,6 @@
 import type { components } from "@/types/api";
+import type { MetricSource } from "@/lib/api";
+import { FeedbackControl } from "./FeedbackControl";
 import { SeverityConfidenceBar } from "./SeverityConfidenceBar";
 import { Sparkline } from "./Sparkline";
 
@@ -8,6 +10,10 @@ interface AnomalyCardProps {
   anomaly: Anomaly;
   highlightedId: string | null;
   onHighlight: (id: string | null) => void;
+  jobId: string;
+  /** Provenance for this metric, when the submission carried one. Absent for
+   *  computed metrics that were never submitted directly. */
+  source?: MetricSource;
 }
 
 const DIRECTION_LABEL: Record<string, string> = {
@@ -20,7 +26,7 @@ const DIRECTION_LABEL: Record<string, string> = {
  * signature severity/confidence marker plus every null-handling case that
  * WILL occur on real data.
  */
-export function AnomalyCard({ anomaly, highlightedId, onHighlight }: AnomalyCardProps) {
+export function AnomalyCard({ anomaly, highlightedId, onHighlight, jobId, source }: AnomalyCardProps) {
   const isSelf = highlightedId === anomaly.anomaly_id;
   const isPartner = highlightedId !== null && anomaly.correlated_anomalies.includes(highlightedId);
   const isHighlighted = isSelf || isPartner;
@@ -132,6 +138,30 @@ export function AnomalyCard({ anomaly, highlightedId, onHighlight }: AnomalyCard
           ))}
         </p>
       )}
+
+      {/* Method provenance per anomaly (critique P0 #3: "no method label on
+          any anomaly card"). Every figure above — z-score, severity, the
+          noise verdict — came from deterministic code, and the card should
+          say so where the numbers are, not only in the panel at the end. */}
+      {source && (
+        <p className="mt-3 text-[11px] text-ink-muted">
+          Source: {source.source_system ?? "not declared"}
+          {source.source_basis === "upload_filename" && " (from filename)"} · {source.grain} · as of{" "}
+          <span className="data">{source.as_of_period}</span> · {source.points} points
+          {source.interpolated_points > 0 && `, ${source.interpolated_points} gap-filled`}
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-2">
+        <p className="max-w-prose text-[11px] text-ink-muted">
+          Detected deterministically · z-score vs band-adjusted baseline, 4-layer noise filter,
+          weighted severity formula · no LLM involved in any figure on this card
+        </p>
+        {/* Per-anomaly, not just per-report: "this one was noise" is the
+            correction an analyst actually wants to make, and it is meaningless
+            without knowing which anomaly they meant. */}
+        <FeedbackControl jobId={jobId} target="anomaly" anomalyId={anomaly.anomaly_id} />
+      </div>
     </article>
   );
 }

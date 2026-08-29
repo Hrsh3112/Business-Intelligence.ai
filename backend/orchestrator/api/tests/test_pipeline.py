@@ -187,3 +187,20 @@ def test_no_path_ever_raises_out_of_run_pipeline(monkeypatch, configure):
     company_input, _ = FIXTURE_BUILDERS["critical"]()
     response = asyncio.run(run_pipeline(company_input))
     assert response.status in ("complete", "refused", "failed")
+
+
+def test_empty_metrics_is_not_blamed_on_c1(monkeypatch):
+    """The C1 adapter refuses to dispatch an empty metrics list. That must not
+    surface as C1_FAILED — C1 was never called, and blaming it tells the user
+    nothing about their own submission. /analyze/upload blocks this case
+    earlier with per-column reasons; this is the backstop for a hand-rolled
+    POST /analyze body."""
+    monkeypatch.setattr(settings, "MOCK_SCENARIO", "critical")
+    company_input, _ = FIXTURE_BUILDERS["critical"]()
+    empty_input = company_input.model_copy(update={"metrics": []})
+
+    response = asyncio.run(run_pipeline(empty_input))
+
+    assert response.status == "failed"
+    assert response.error == ErrorCode.NO_USABLE_METRICS
+    assert response.result is None

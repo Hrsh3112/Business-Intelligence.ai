@@ -5,7 +5,7 @@ depends on these, so they can change freely without cross-team coordination.
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from api.models.shared import CompanyInput, EnrichedReport, RevenueBand, SectorId
 
@@ -117,6 +117,14 @@ class FormMetadata(BaseModel):
     annual_revenue: Optional[float] = None
     revenue_band: Optional[RevenueBand] = None  # trusted only if annual_revenue is absent
     raw_text_context: Optional[str] = None
+    # --- Provenance (Stage 4). Both optional: a submission that declares
+    # nothing still gets a manifest, just with the source left unknown rather
+    # than guessed. ---
+    source_system: Optional[str] = Field(default=None, max_length=120)
+    # Per-metric override, e.g. {"churn_rate": "CRM export (daily)"}. This is
+    # how one upload can honestly carry two systems at two cadences without
+    # pretending we hold a live connector to either.
+    metric_sources: Optional[dict[str, str]] = None
 
     @model_validator(mode="after")
     def _require_revenue_signal(self) -> "FormMetadata":
@@ -133,6 +141,14 @@ class ErrorCode(str, Enum):
     """
 
     VALIDATION_ERROR = "VALIDATION_ERROR"
+    # Every column the user submitted was either unrecognised or excluded by
+    # the validation layer, so nothing usable remains to analyse. Distinct
+    # from VALIDATION_ERROR (the request itself was malformed) and from a C1
+    # refusal (C1 saw the data and declined): here C1 is never called, because
+    # sending metrics: [] just produces a misleading "no metrics submitted"
+    # when the user did submit data — C2 discarded it. The per-column reasons
+    # travel alongside this code in ApiResponse.warnings.
+    NO_USABLE_METRICS = "NO_USABLE_METRICS"
     C1_TIMEOUT = "C1_TIMEOUT"
     C1_FAILED = "C1_FAILED"
     # Reserved, not currently triggered: get_c1()/get_c3() degrade a missing
@@ -156,6 +172,106 @@ class Timings(BaseModel):
     total_ms: int
 
 
+class MetricSource(BaseModel):
+    """Provenance for one submitted metric (Stage 4 — critique P0 #2 / Req 2).
+
+    WHY THIS LIVES ON C2's ENVELOPE: the frontend only ever receives the
+    EnrichedReport, so today it can see nothing about the CompanyInput that
+    produced it. C2 holds that input. Deriving the manifest here means the
+    lineage, grain and freshness reach the UI without a single change to C1's
+    or C3's schemas.
+
+    WHAT IS REAL vs DECLARED — the distinction matters if a judge asks:
+      * grain, as_of_period, period range, point counts, interpolated counts
+        and confidence are all COMPUTED from the data actually submitted.
+      * source_system is DECLARED by the user (or inferred from the uploaded
+        filename). `source_basis` records which, so the label is never passed
+        off as something the system verified.
+    """
+
+    metric_id: str
+    display_name: Optional[str] = None
+    source_system: Optional[str] = None
+    source_basis: Literal["declared", "upload_filename", "unknown"] = "unknown"
+    grain: str  # per-metric granularity — authoritative over the envelope's
+    as_of_period: Optional[str] = None  # latest period actually present
+    first_period: Optional[str] = None
+    points: int = 0
+    interpolated_points: int = 0  # how much of the series C2 gap-filled
+    confidence: float = 1.0
+
+
+class FeedbackVerdict(str, Enum):
+    USEFUL = "useful"
+    NOT_USEFUL = "not_useful"
+
+
+class FeedbackCorrection(str, Enum):
+    """The specific corrections an analyst can make, from the four the critique
+    names: "this was noise, suppress it", "more severe than the score
+    suggests", and the root-cause correction workflow. Enumerated rather than
+    free text so the log is aggregatable later — a pile of prose comments is
+    not a feedback signal anyone can act on."""
+
+    WAS_NOISE = "was_noise"
+    SEVERITY_UNDERSTATED = "severity_understated"
+    SEVERITY_OVERSTATED = "severity_overstated"
+    WRONG_ROOT_CAUSE = "wrong_root_cause"
+
+
+class FeedbackRequest(BaseModel):
+    """What a user submits about a report they were just shown.
+
+    Scope honesty: this records a verdict, it does not retrain anything. The
+    endpoint appends to a file. Nothing in the pipeline reads it back yet, and
+    no claim to the contrary belongs in the UI or the deck — the Living
+    Knowledge Base loop is roadmap, and this is its first hop.
+    """
+
+    job_id: str
+    target: Literal["report", "narrative", "anomaly"] = "report"
+    anomaly_id: Optional[str] = None  # required in spirit when target="anomaly"
+    verdict: FeedbackVerdict
+    correction: Optional[FeedbackCorrection] = None
+    # Capped: this is written to disk unauthenticated, so an uncapped field is
+    # a free disk-fill. 2000 chars is far more than anyone types in a demo.
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def _anomaly_target_needs_an_id(self) -> "FeedbackRequest":
+        if self.target == "anomaly" and not self.anomaly_id:
+            raise ValueError("anomaly_id is required when target is 'anomaly'")
+        return self
+
+
+class FeedbackResponse(BaseModel):
+    """Deliberately not an ApiResponse: feedback is not a pipeline run, and
+    reusing that envelope would imply a job_id/status/result it does not have."""
+
+    recorded: bool
+    message: str
+
+
+class CostEstimate(BaseModel):
+    """What the one LLM call cost, as far as we can honestly say.
+
+    C2-owned and on C2's envelope on purpose. The token count and model name
+    come from C3's EnrichmentMetadata, but the *price* is ours to derive — and
+    we already carry one unsigned addition to a shared model
+    (EnrichmentMetadata.degraded_reason, Deviation #1). A second one would be
+    worse manners than keeping our own derivation on our own envelope.
+
+    `estimated_usd` is None whenever we cannot stand behind a figure — an
+    unpriced model, or no LLM call at all. It is never 0.0 as a stand-in for
+    unknown. `basis` records how the figure was reached so it can be defended.
+    """
+
+    llm_model: Optional[str] = None
+    tokens_used: Optional[int] = None
+    estimated_usd: Optional[float] = None  # ESTIMATE, derived — not measured spend
+    basis: Optional[str] = None
+
+
 class ApiResponse(BaseModel):
     """Envelope. Identical shape whether sync or polled — so we can switch
     without touching the frontend."""
@@ -166,3 +282,7 @@ class ApiResponse(BaseModel):
     warnings: list[ParseWarning] = []
     error: Optional[ErrorCode] = None
     timings: Optional[Timings] = None
+    cost: Optional[CostEstimate] = None
+    # Empty when the pipeline never ran (no input to describe), never null-as-
+    # unknown — an empty list and a missing field mean different things here.
+    source_manifest: list[MetricSource] = []
