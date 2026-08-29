@@ -1,6 +1,7 @@
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from ..models.input_schema import CompanyInput
-from ..models.output_schema import RefusalDetails, RefusalReason
+from ..models.internal import MetricDeviation
+from ..models.output_schema import AnomalyItem, RefusalDetails, RefusalReason
 
 
 class RefusalEvaluator:
@@ -50,7 +51,7 @@ class RefusalEvaluator:
                 reason=RefusalReason.INSUFFICIENT_DATA,
                 message=(
                     "All submitted metrics have fewer than the required periods (6 monthly / 4 quarterly / 3 annual) "
-                    "for structural anomaly and trend analysis."
+                    "for structural anomaly and trend analysis (newly launched or sparse-history KPI)."
                 ),
                 diagnostic_suggestion=(
                     "Please provide at least 6 monthly, 4 quarterly, or 3 annual periods of historical data "
@@ -60,3 +61,47 @@ class RefusalEvaluator:
             )
 
         return None
+
+    @staticmethod
+    def evaluate_contradictory_evidence(
+        anomalies: List[AnomalyItem],
+        deviations_map: Dict[str, MetricDeviation],
+        correlation_engine: Any,
+        threshold: float = 0.5,
+    ) -> Optional[RefusalDetails]:
+        """
+        Returns a CONTRADICTORY_EVIDENCE refusal if strong conflicting signals exist.
+
+        Condition: an anomaly (|z| >= 2.0) has a highly correlated peer (|coeff| >= threshold)
+        deviating strongly in the opposite direction from what the correlation predicts.
+        """
+        conflicting_pairs = []
+        for anom in anomalies:
+            corr_metrics = correlation_engine.get_correlated_metrics(
+                anom.metric_id, threshold=threshold
+            )
+            for other_id in corr_metrics:
+                if other_id in deviations_map:
+                    other_dev = deviations_map[other_id]
+                    corr = correlation_engine.get_correlation(anom.metric_id, other_id)
+                    co_dev_sign = anom.deviation.z_score * other_dev.z_score * corr
+                    if co_dev_sign < -0.8 and abs(anom.deviation.z_score) >= 2.0 and abs(other_dev.z_score) >= 2.0:
+                        conflicting_pairs.append((anom.metric_id, other_id))
+
+        if conflicting_pairs:
+            metric_ids = sorted(list(set([p[0] for p in conflicting_pairs] + [p[1] for p in conflicting_pairs])))
+            pair_strs = [f"{p[0]} vs {p[1]}" for p in conflicting_pairs[:2]]
+            return RefusalDetails(
+                reason=RefusalReason.CONTRADICTORY_EVIDENCE,
+                message=(
+                    f"Strong contradictory signals detected between correlated metrics ({', '.join(pair_strs)}). "
+                    "The observed opposing movements violate domain relationships, preventing reliable diagnostic attribution."
+                ),
+                diagnostic_suggestion=(
+                    "Verify data accuracy, definitions, or reporting periods for the conflicting metrics to ensure consistent data inputs."
+                ),
+                missing_metrics=metric_ids,
+            )
+
+        return None
+

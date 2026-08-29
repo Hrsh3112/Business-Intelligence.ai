@@ -315,3 +315,16 @@ correlation_matrix:
   return_rate:
     gross_margin: -0.50
 
+revenue_band_impact_weights:
+  "<1M":
+    gross_margin: 1.4
+    inventory_turnover: 1.3
+  "1M-10M":
+    same_store_sales_growth: 1.3
+    gross_margin: 1.2
+  "10M-100M":
+    inventory_turnover: 1.3
+  ">100M":
+    same_store_sales_growth: 1.2
+
+

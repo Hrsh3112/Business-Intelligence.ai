@@ -47,4 +47,5 @@ class FilterResult:
     l4_passed: bool
     noise_confidence: float
     rejection_reason: Optional[str] = None
+    layer_failed: Optional[str] = None
     correlated_metric_ids: List[str] = field(default_factory=list)

@@ -4,6 +4,7 @@ z_threshold_flag: 1.5
 z_threshold_alert: 2.5
 min_persistence_periods: 2
 correlation_threshold: 0.5
+urgency_acceleration_threshold: 0.1
 min_periods_for_trend:
   monthly: 6
   quarterly: 4

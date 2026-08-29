@@ -86,8 +86,37 @@ def generate_narrative(
                 "recommended_actions": mc.recommended_actions
             })
             
+        # Persona-tailored guidance
+        persona = getattr(anomaly_report, "persona", None)
+        if hasattr(persona, "value"):
+            persona = persona.value
+        if isinstance(persona, str):
+            persona = persona.lower()
+
+        if persona == "executive":
+            role_instruction = (
+                "You are briefing a C-suite executive (CEO/CFO).\n"
+                "Tone & Focus:\n"
+                "- Use strategic, executive-level language focusing on business outcomes, cash runway, and market position.\n"
+                "- Avoid raw statistical jargon (like z-scores and standard deviations).\n"
+                "- Keep situation_summary concise, clear, and action-oriented (3-4 sentences max).\n"
+                "- Frame prioritized_actions as high-level strategic decisions with expected business impact."
+            )
+        elif persona == "analyst":
+            role_instruction = (
+                "You are briefing a Senior Business Intelligence & Financial Analyst.\n"
+                "Tone & Focus:\n"
+                "- Provide comprehensive, rigorous analytical depth referencing metric deviations, observed vs expected values, and co-movement patterns.\n"
+                "- Keep situation_summary detailed (5-8 sentences) exploring causal mechanisms and metric interactions.\n"
+                "- Provide granular details for likely_root_causes and actionable execution plans in prioritized_actions."
+            )
+        else:
+            role_instruction = (
+                "You are a Business Intelligence Analyst. Generate a comprehensive business narrative analyzing company performance anomalies."
+            )
+
         prompt = f"""
-You are a Business Intelligence Analyst. Generate a comprehensive business narrative analyzing the anomalies detected in our company performance.
+{role_instruction}
 
 --- COMPANY PROFILE ---
 {profile_summary}
@@ -105,7 +134,7 @@ You are a Business Intelligence Analyst. Generate a comprehensive business narra
 {json.dumps(cases_ctx, indent=2)}
 
 Please analyze the above context and output a JSON object containing:
-1. situation_summary: A high-level synthesis of the current business situation.
+1. situation_summary: A synthesis of the current business situation tailored to the specified persona.
 2. likely_root_causes: A list of likely root causes based on anomalies and matched cases.
 3. prioritized_actions: A list of prioritized action items. Each item must contain:
    - title: Short title of the action.

@@ -74,6 +74,7 @@ class SectorConfig(BaseModel):
     version: str = "2026-07-01"
     metrics: List[MetricDefinition]
     correlation_matrix: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    revenue_band_impact_weights: Dict[str, Dict[str, float]] = Field(default_factory=dict)
 
 
 class ThresholdsConfig(BaseModel):
@@ -81,6 +82,7 @@ class ThresholdsConfig(BaseModel):
     z_threshold_alert: float = 2.5
     min_persistence_periods: int = 2
     correlation_threshold: float = 0.5
+    urgency_acceleration_threshold: float = 0.1
     min_periods_for_trend: Union[Dict[str, int], int] = Field(
         default_factory=lambda: {"monthly": 6, "quarterly": 4, "annual": 3}
     )

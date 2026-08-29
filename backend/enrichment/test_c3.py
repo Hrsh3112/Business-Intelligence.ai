@@ -323,5 +323,58 @@ class TestC3Engine(unittest.TestCase):
         output_dump = enriched.anomaly_report.model_dump()
         self.assertEqual(input_dump, output_dump)
 
+    def test_adjustment_extended_action_fields(self):
+        """
+        Verify all 5 new action-recommendation fields are populated on Prescriptions:
+        - controllable_lever
+        - expected_impact
+        - owner
+        - action_confidence
+        - monitoring_plan
+        """
+        anomalies_dict = [
+            make_test_anomaly("A", "churn_rate")
+        ]
+        report_dict = make_test_report_dict(anomalies=anomalies_dict, sector_id="TECH_SAAS")
+        enriched = enrich_report(report_dict)
+        self.assertEqual(len(enriched.prescriptions), 1)
+        adj = enriched.prescriptions[0].prescribed_adjustments[0]
+        self.assertTrue(len(adj.controllable_lever) > 0)
+        self.assertTrue(len(adj.expected_impact) > 0)
+        self.assertTrue(len(adj.owner) > 0)
+        self.assertIn(adj.action_confidence, ["HIGH", "MEDIUM", "LOW"])
+        self.assertTrue(len(adj.monitoring_plan) > 0)
+
+    @patch.dict("os.environ", {"GEMINI_API_KEY": "test_fake_api_key"})
+    def test_narrative_persona_prompt_branching(self):
+        """Verify narrative prompt varies between executive and analyst personas."""
+        from c3_engine.narrative import generate_narrative
+
+        # Mock send_message response
+        mock_resp = MagicMock()
+        mock_resp.parsed = None
+        mock_resp.text = MOCK_NARRATIVE_JSON
+        mock_resp.usage_metadata = MagicMock(total_token_count=150)
+        mock_genai.Client.return_value.chats.create.return_value.send_message.return_value = mock_resp
+        mock_genai.Client.return_value.chats.create.return_value.send_message.side_effect = None
+
+        anomalies_dict = [make_test_anomaly("A", "churn_rate")]
+        report_dict_exec = make_test_report_dict(anomalies=anomalies_dict, sector_id="TECH_SAAS")
+        report_exec = AnomalyReport.model_validate(report_dict_exec)
+        report_exec.persona = "executive"
+
+        generate_narrative(report_exec, [], [])
+        exec_call_args = mock_genai.Client.return_value.chats.create.return_value.send_message.call_args[0][0]
+        self.assertIn("C-suite executive", exec_call_args)
+
+        report_dict_analyst = make_test_report_dict(anomalies=anomalies_dict, sector_id="TECH_SAAS")
+        report_analyst = AnomalyReport.model_validate(report_dict_analyst)
+        report_analyst.persona = "analyst"
+
+        generate_narrative(report_analyst, [], [])
+        analyst_call_args = mock_genai.Client.return_value.chats.create.return_value.send_message.call_args[0][0]
+        self.assertIn("Senior Business Intelligence", analyst_call_args)
+
 if __name__ == "__main__":
     unittest.main()
+

@@ -28,6 +28,12 @@ class TrendDirection(str, Enum):
     IMPROVING = "improving"
 
 
+class UrgencyLabel(str, Enum):
+    ESCALATING = "escalating"
+    STABLE_BAD = "stable_bad"
+    IMPROVING = "improving"
+
+
 class RefusalReason(str, Enum):
     INSUFFICIENT_DATA = "insufficient_data"
     LOW_CONFIDENCE = "low_confidence"
@@ -86,6 +92,27 @@ class AnomalyItem(BaseModel):
         default_factory=list,
         description="IDs of related anomalies that co-deviated"
     )
+    driver_rank: int = Field(
+        default=0,
+        description=(
+            "Relative causal ranking among correlated anomalies. "
+            "1 = most likely primary driver; 0 = likely symptom or uncorrelated."
+        )
+    )
+    candidate_explanations: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Competing deterministic explanations when noise_confidence < 0.5. "
+            "Each string names a plausible hypothesis. Empty when confidence is high."
+        )
+    )
+    decision_urgency: UrgencyLabel = Field(
+        default=UrgencyLabel.STABLE_BAD,
+        description=(
+            "Time-urgency signal independent of severity magnitude. "
+            "'escalating' = fast-worsening trajectory; 'stable_bad' = below baseline but not accelerating; 'improving' = recovering."
+        )
+    )
     noise_confidence: float = Field(
         ...,
         ge=0.0,
@@ -137,6 +164,13 @@ class ReportMetadata(BaseModel):
     metrics_with_anomalies: int = 0
     metrics_with_missing_data: int = 0
     skipped_metrics: List[str] = Field(default_factory=list, description="Metric IDs provided in input that are not recognized for this sector")
+    filtered_metrics: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Metrics that were submitted, recognized, but filtered out by the noise filter "
+            "before becoming anomalies. Each entry: {'metric_id': str, 'reason': str, 'layer': 'L1'|'L2'|'L3'|'L4'}."
+        )
+    )
     processing_time_ms: int = 0
 
 

@@ -147,3 +147,99 @@ def test_low_confidence_refusal():
     refusal = RefusalEvaluator.evaluate_refusal(low_conf_input)
     assert refusal is not None
     assert refusal.reason == RefusalReason.LOW_CONFIDENCE
+
+
+def test_sparse_history_newly_launched_kpi_message():
+    """Verify refusal message specifically calls out newly launched or sparse-history KPI."""
+    sparse_input = CompanyInput(
+        company_id="comp_sparse_kpi",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Sparse Corp", employee_count=10, revenue_band=RevenueBand.UNDER_1M
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-04", end="2026-06"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="monthly_recurring_revenue_growth",
+                values=[
+                    TimeSeriesPoint(period="2026-04", value=5.0),
+                    TimeSeriesPoint(period="2026-05", value=4.0),
+                    TimeSeriesPoint(period="2026-06", value=3.0),
+                ],
+            )
+        ],
+    )
+    report = analyze_company(sparse_input)
+    assert report.refusal is not None
+    assert report.refusal.reason == RefusalReason.INSUFFICIENT_DATA
+    assert "sparse-history" in report.refusal.message or "newly launched" in report.refusal.message
+
+
+def test_contradictory_evidence_refusal():
+    """Verify contradictory evidence refusal fires when positively correlated metrics deviate in opposite directions."""
+    from ml_engine.synthetic.correlations import CorrelationEngine
+    from ml_engine.config.loader import load_sector_config
+    from ml_engine.models.internal import MetricDeviation
+    from ml_engine.models.output_schema import AnomalyItem, DeviationDetails, DeviationDirection, TrendDetails, TrendDirection
+
+    saas_cfg = load_sector_config("TECH_SAAS")
+    corr_engine = CorrelationEngine(saas_cfg)
+
+    # monthly_recurring_revenue_growth and net_revenue_retention have positive correlation 0.78
+    # If MRR growth is severely anomalous with z = -3.0 (crashing), but NRR is anomalous with z = +3.0 (surging)
+    # co_dev_sign = -3.0 * 3.0 * 0.78 = -7.02 (strongly negative despite positive correlation)
+    anom1 = AnomalyItem(
+        anomaly_id="anom_001",
+        metric_id="monthly_recurring_revenue_growth",
+        metric_display_name="MRR Growth",
+        category="revenue",
+        severity_score=80.0,
+        severity_label="SEVERE",
+        deviation=DeviationDetails(
+            observed_current=-5.0,
+            expected_value=8.5,
+            expected_std=3.2,
+            z_score=-3.0,
+            percentile=0.1,
+            direction=DeviationDirection.BELOW_EXPECTED,
+        ),
+        trend=TrendDetails(direction=TrendDirection.DETERIORATING),
+        noise_confidence=0.85,
+        natural_language_summary="MRR growth declined sharply",
+    )
+
+    dev_map = {
+        "monthly_recurring_revenue_growth": MetricDeviation(
+            metric_id="monthly_recurring_revenue_growth",
+            observed_value=-5.0,
+            expected_mean=8.5,
+            expected_std=3.2,
+            z_score=-3.0,
+            percentile=0.1,
+            direction=DeviationDirection.BELOW_EXPECTED,
+            severity_raw=80.0,
+        ),
+        "net_revenue_retention": MetricDeviation(
+            metric_id="net_revenue_retention",
+            observed_value=140.0,
+            expected_mean=105.0,
+            expected_std=10.0,
+            z_score=3.5,
+            percentile=99.9,
+            direction=DeviationDirection.ABOVE_EXPECTED,
+            severity_raw=80.0,
+        ),
+    }
+
+    refusal = RefusalEvaluator.evaluate_contradictory_evidence(
+        anomalies=[anom1],
+        deviations_map=dev_map,
+        correlation_engine=corr_engine,
+        threshold=0.5,
+    )
+    assert refusal is not None
+    assert refusal.reason == RefusalReason.CONTRADICTORY_EVIDENCE
+    assert "contradictory" in refusal.message.lower()
+

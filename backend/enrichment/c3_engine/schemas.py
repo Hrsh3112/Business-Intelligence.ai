@@ -112,6 +112,11 @@ class Adjustment(BaseModel):
     delta: Optional[float] = None
     priority: Literal["HIGH", "MEDIUM", "LOW"]
     rationale: str
+    controllable_lever: str = ""
+    expected_impact: str = ""
+    owner: str = ""
+    action_confidence: Literal["HIGH", "MEDIUM", "LOW"] = "MEDIUM"
+    monitoring_plan: str = ""
 
 class Prescription(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)

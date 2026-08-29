@@ -40,7 +40,8 @@ class MultiLayerNoiseFilter:
                 l3_passed=False,
                 l4_passed=False,
                 noise_confidence=0.1,
-                rejection_reason=f"Deviation (|z|={abs_z:.2f}) is below flag threshold ({self.thresholds.z_threshold_flag})"
+                rejection_reason=f"Deviation (|z|={abs_z:.2f}) is below flag threshold ({self.thresholds.z_threshold_flag})",
+                layer_failed="L1",
             )
 
         # Layer 2: Persistence Filter
@@ -59,7 +60,8 @@ class MultiLayerNoiseFilter:
                 l3_passed=False,
                 l4_passed=False,
                 noise_confidence=0.35,
-                rejection_reason="Deviation lacks persistence across consecutive periods (transient spike)"
+                rejection_reason="Deviation lacks persistence across consecutive periods (transient spike)",
+                layer_failed="L2",
             )
 
         # Layer 3: Correlation Consistency
@@ -101,7 +103,21 @@ class MultiLayerNoiseFilter:
                 l3_passed=l3_passed,
                 l4_passed=False,
                 noise_confidence=0.4,
-                rejection_reason="Deviation falls within expected seasonal cycle variation"
+                rejection_reason="Deviation falls within expected seasonal cycle variation",
+                layer_failed="L4",
+            )
+
+        if not l3_passed:
+            return FilterResult(
+                passed=False,
+                l1_passed=True,
+                l2_passed=True,
+                l3_passed=False,
+                l4_passed=l4_passed,
+                noise_confidence=0.35,
+                rejection_reason="Deviation is contradicted by strong opposite movements in correlated metrics",
+                layer_failed="L3",
+                correlated_metric_ids=confirming_correlations,
             )
 
         # Calculate noise confidence (probability this is true structural signal, 0.0 to 1.0)
@@ -124,5 +140,6 @@ class MultiLayerNoiseFilter:
             l3_passed=l3_passed,
             l4_passed=l4_passed,
             noise_confidence=round(final_noise_conf, 2),
+            layer_failed=None,
             correlated_metric_ids=confirming_correlations,
         )

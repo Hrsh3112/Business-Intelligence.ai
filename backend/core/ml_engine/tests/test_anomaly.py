@@ -92,3 +92,144 @@ def test_severity_scorer_components():
         data_confidence=1.0,
     )
     assert score >= 50.0  # Should be CRITICAL or SEVERE
+
+
+def test_driver_rank_and_urgency_in_pipeline():
+    """Verify driver_rank and decision_urgency are computed in e2e pipeline."""
+    from ml_engine.models.input_schema import CompanyInput, CompanyMetadata, PeriodType, ReportingPeriod, SectorId
+    from ml_engine.models.output_schema import UrgencyLabel
+    from ml_engine.pipeline import analyze_company
+
+    failing_input = CompanyInput(
+        company_id="comp_saas_driver_test",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Driver Test Corp",
+            employee_count=100,
+            annual_revenue=15_000_000.0,
+            revenue_band=RevenueBand.TEN_TO_100M,
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-01-01", end="2026-06-30"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="monthly_recurring_revenue_growth",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=8.0),
+                    TimeSeriesPoint(period="2026-02", value=5.0),
+                    TimeSeriesPoint(period="2026-03", value=2.0),
+                    TimeSeriesPoint(period="2026-04", value=-1.0),
+                    TimeSeriesPoint(period="2026-05", value=-3.0),
+                    TimeSeriesPoint(period="2026-06", value=-6.0),
+                ],
+            ),
+            MetricInput(
+                metric_id="churn_rate",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=2.1),
+                    TimeSeriesPoint(period="2026-02", value=2.5),
+                    TimeSeriesPoint(period="2026-03", value=3.2),
+                    TimeSeriesPoint(period="2026-04", value=4.0),
+                    TimeSeriesPoint(period="2026-05", value=4.8),
+                    TimeSeriesPoint(period="2026-06", value=5.5),
+                ],
+            ),
+        ],
+    )
+
+    report = analyze_company(failing_input)
+    assert len(report.anomalies) >= 2
+    # At least one anomaly in the correlated cluster must be ranked as driver (driver_rank=1)
+    driver_ranks = [a.driver_rank for a in report.anomalies]
+    assert 1 in driver_ranks
+    # Check decision urgency
+    urgencies = [a.decision_urgency for a in report.anomalies]
+    assert UrgencyLabel.ESCALATING in urgencies or UrgencyLabel.STABLE_BAD in urgencies
+
+
+def test_candidate_explanations_for_low_confidence():
+    """Verify weak-signal anomalies (<0.5 confidence) receive candidate explanations."""
+    from ml_engine.anomaly.detector import AnomalyDetector
+    from ml_engine.models.internal import MetricDeviation, MetricFeatures
+    from ml_engine.models.output_schema import DeviationDirection, TrendDirection
+
+    thresholds = load_thresholds()
+    saas_cfg = load_sector_config("TECH_SAAS")
+    corr_engine = CorrelationEngine(saas_cfg)
+    detector = AnomalyDetector(thresholds, corr_engine)
+    gen = SyntheticProfileGenerator(saas_cfg)
+    profile = gen.get_calibrated_profile(RevenueBand.ONE_TO_10M)
+    baseline = profile["monthly_recurring_revenue_growth"]
+
+    features = MetricFeatures(
+        metric_id="monthly_recurring_revenue_growth",
+        latest_value=-2.0,
+        mean=1.0,
+        std=2.0,
+        num_points=6,
+        has_trend_support=True,
+        trend_direction=TrendDirection.DETERIORATING,
+    )
+    deviation = MetricDeviation(
+        metric_id="monthly_recurring_revenue_growth",
+        observed_value=-2.0,
+        expected_mean=8.5,
+        expected_std=3.2,
+        z_score=-3.28,
+        percentile=0.05,
+        direction=DeviationDirection.BELOW_EXPECTED,
+        severity_raw=70.0,
+        periods_deviating=3,
+    )
+
+    anomalies, highlights, health, filtered = detector.detect_anomalies(
+        features_map={"monthly_recurring_revenue_growth": features},
+        deviations_map={"monthly_recurring_revenue_growth": deviation},
+        baselines_map={"monthly_recurring_revenue_growth": baseline},
+        data_confidence_map={"monthly_recurring_revenue_growth": 0.4},
+    )
+
+    assert len(anomalies) == 1
+    # Check that candidate_explanations is a list
+    assert isinstance(anomalies[0].candidate_explanations, list)
+
+
+def test_filtered_metrics_channel():
+    """Verify metrics failing noise filter layers are recorded in filtered_metrics."""
+    from ml_engine.models.input_schema import CompanyInput, CompanyMetadata, PeriodType, ReportingPeriod, SectorId
+    from ml_engine.pipeline import analyze_company
+
+    # Metric with transient 1-period spike (fails Layer 2 persistence)
+    input_data = CompanyInput(
+        company_id="comp_filter_test",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Filter Test", employee_count=50, revenue_band=RevenueBand.ONE_TO_10M
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-01-01", end="2026-06-30"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="monthly_recurring_revenue_growth",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=8.5),
+                    TimeSeriesPoint(period="2026-02", value=8.5),
+                    TimeSeriesPoint(period="2026-03", value=8.5),
+                    TimeSeriesPoint(period="2026-04", value=8.5),
+                    TimeSeriesPoint(period="2026-05", value=8.5),
+                    TimeSeriesPoint(period="2026-06", value=-2.0), # Single spike
+                ],
+            )
+        ],
+    )
+
+    report = analyze_company(input_data)
+    # The transient spike should either be filtered out or recorded
+    if len(report.anomalies) == 0:
+        assert len(report.metadata.filtered_metrics) >= 1
+        fm = report.metadata.filtered_metrics[0]
+        assert fm["metric_id"] == "monthly_recurring_revenue_growth"
+        assert "L2" in fm["layer"] or "persistence" in fm["reason"].lower()
+

@@ -108,12 +108,52 @@ def analyze_company(input_data: CompanyInput) -> AnomalyReport:
     # 3. Detect Anomalies & Score
     corr_engine = CorrelationEngine(sector_cfg)
     detector = AnomalyDetector(thresholds, corr_engine)
-    anomalies, highlights, health_score = detector.detect_anomalies(
+    anomalies, highlights, health_score, filtered_metrics = detector.detect_anomalies(
         features_map=features_map,
         deviations_map=deviations_map,
         baselines_map=baselines_map,
         data_confidence_map=data_confidence_map,
+        revenue_band=input_data.company_metadata.revenue_band,
+        sector_config=sector_cfg,
     )
+
+    # 3b. Evaluate contradictory evidence refusal
+    contradictory_refusal = RefusalEvaluator.evaluate_contradictory_evidence(
+        anomalies=anomalies,
+        deviations_map=deviations_map,
+        correlation_engine=corr_engine,
+        threshold=thresholds.correlation_threshold,
+    )
+    if contradictory_refusal is not None:
+        elapsed_ms = max(int((time.perf_counter() - start_time) * 1000), 1)
+        metadata = ReportMetadata(
+            model_version="0.1.0-mvp",
+            synthetic_profile_version=sector_cfg.version,
+            noise_filter_config={
+                "z_threshold_flag": thresholds.z_threshold_flag,
+                "z_threshold_alert": thresholds.z_threshold_alert,
+                "min_persistence_periods": thresholds.min_persistence_periods,
+                "correlation_threshold": thresholds.correlation_threshold,
+            },
+            metrics_analyzed=len(features_map),
+            metrics_with_anomalies=len(anomalies),
+            metrics_with_missing_data=missing_data_count,
+            skipped_metrics=skipped_metrics,
+            filtered_metrics=filtered_metrics,
+            processing_time_ms=elapsed_ms,
+        )
+        return AnomalyReport(
+            company_id=input_data.company_id,
+            sector_id=input_data.sector_id,
+            analysis_timestamp=timestamp_str,
+            reporting_period=input_data.reporting_period,
+            company_profile_summary=profile_summary,
+            overall_health_score=None,
+            anomalies=anomalies,
+            non_anomalous_highlights=highlights,
+            refusal=contradictory_refusal,
+            metadata=metadata,
+        )
 
     # 4. Derived cross-metric ratio highlights
     if "lifetime_value" in features_map and "customer_acquisition_cost" in features_map:
@@ -169,6 +209,7 @@ def analyze_company(input_data: CompanyInput) -> AnomalyReport:
         metrics_with_anomalies=len(anomalies),
         metrics_with_missing_data=missing_data_count,
         skipped_metrics=skipped_metrics,
+        filtered_metrics=filtered_metrics,
         processing_time_ms=elapsed_ms,
     )
 
