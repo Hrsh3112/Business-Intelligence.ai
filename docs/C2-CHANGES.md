@@ -2,12 +2,15 @@
 
 **Component:** C2 (API, parsing, orchestration, frontend)
 **Base:** `458cf1d` "Initial commit" (the merged v1 of C1 + C2 + C3)
-**Branch:** `c2-fixes` — 4 commits, **local only, not pushed**
-**Scope of change:** 52 files, +2977 / −158
+**Branch:** `c2-fixes` — **local only, not pushed**
+**Scope of change:** 53 files, ~+3200 / −158
 **Audience:** C1's and C3's owners and their AI agents. Written to be read cold.
 
-> **Read §1 first.** Two items in this work are inert until C1's or C3's owner
+> **Read §1 first.** Three items in this work are inert until C1's or C3's owner
 > acts, and one shared-schema field was added that both should know about.
+>
+> **§11 maps every item in `docs/critique.md` to what was done** — start there
+> if you are checking coverage rather than reading changes.
 
 Everything below was verified by running it: `255 backend tests pass`,
 `tsc --noEmit` clean, `eslint` clean, `next build` succeeds, and each API
@@ -66,7 +69,27 @@ verified against C1's source and is pinned by a test
 (`test_lineage.py::test_c1_adapter_drops_it_without_raising`) so that if C1
 ever switches to `extra="forbid"`, it fails in CI rather than at the demo.
 
-### 1.4 Open questions carried over (unchanged by this work)
+### 1.4 C3 — the action-recommendation fields (critique P1 #6)
+
+**Not started by anyone.** The problem statement defines the action format as
+`driver → controllable lever → action → expected impact → owner → confidence →
+monitoring plan`. `Adjustment` currently has `action`, `rationale`, `priority`,
+`target_value` and `delta` — so roughly three of seven.
+
+**Why C2 did not do it.** `Adjustment` is produced by C3 and lives in the shared
+schema. C2 does not add fields to models it does not populate, and inventing an
+`owner` or a `monitoring_plan` in the rendering layer would be fabricating
+content — the same rule that stops us inventing costs or hypotheses.
+
+**What C3 would do:** add `controllable_lever`, `expected_impact`, `owner`,
+`confidence`, `monitoring_plan` to `Adjustment`. Placeholder values are
+acceptable per the critique ("CFO / Finance team", "Monitor monthly for 3
+periods") provided they are visibly generic rather than presented as derived.
+
+**What C2 will do once it lands:** mirror the fields and render them in
+`PrescriptionCard.tsx`. Small, and it does not block anything else.
+
+### 1.5 Open questions carried over (unchanged by this work)
 
 | # | Question | Owner |
 |---|---|---|
@@ -240,7 +263,7 @@ to `http://localhost:3000,http://127.0.0.1:3000` and overridable via
 
 > The three frontend crashes above were invisible until `types/api.ts` was
 > regenerated. They are the concrete argument for keeping generated types in
-> sync, and for treating open question §1.4 #2 (schema loosening) as real.
+> sync, and for treating open question §1.5 #2 (schema loosening) as real.
 
 ---
 
@@ -302,7 +325,7 @@ match — the current shape is deliberately not final.
 | Item | Why |
 |---|---|
 | **Touch any C1 or C3 source file** | Out of scope by instruction. Every change is in `backend/orchestrator/api/`, `web/`, `scripts/`, `docs/`, or root config. |
-| **Tighten the schema loosening** in `models/shared.py` | Rejecting output that no one has inspected is riskier than accepting it. Needs a team decision — §1.4 #2. |
+| **Tighten the schema loosening** in `models/shared.py` | Rejecting output that no one has inspected is riskier than accepting it. Needs a team decision — §1.5 #2. |
 | **Push anything** | 4 commits sit on local branch `c2-fixes`. Nothing has reached the remote. |
 | **Enforce persona entitlement server-side** | The redaction is presentation-layer. The payload still contains every field, and the UI says so verbatim: *"In production this would be enforced at the data layer with row- and column-level security; here the redaction is applied in the presentation layer only."* Calling conditional rendering "field-level security" is disprovable with devtools in ten seconds. |
 | **Invent alternative hypotheses** | See §1.2. |
@@ -388,3 +411,74 @@ curl -s -X POST localhost:8000/feedback -H 'Content-Type: application/json' \
 | `test_metrics_route.py` | 14 | Catalog correctness, config equivalence, CORS |
 | Added to existing files | 5 | `NO_USABLE_METRICS` paths |
 | **Total** | **255** | |
+
+---
+
+## 11. Critique traceability
+
+Maps every actionable item in `docs/critique.md` to what C2 did.
+
+**Legend:** ✅ done · ◐ partial, with what's missing named · ⬜ not started ·
+⚠️ unchanged by this work.
+
+Statuses are C2's own honest reading, not a score to quote. Where an item is
+partial, the deck should claim the delivered half and nothing more.
+
+### Part 4 — prioritised fixes
+
+| # | Critique item | What C2 did | Status | Still needed |
+|---|---|---|---|---|
+| **P0 1** | Add a persona selector | `Persona` enum, form selector, live in-place view toggle, field-level entitlement, and transport all the way to C3 | ◐ | **C3** must read `anomaly_report.persona` and vary the prompt — §1.1 |
+| **P0 2** | Second data source; `source_system`/`data_as_of`; render on the card | `ApiResponse.source_manifest`; `FormMetadata.source_system` + per-metric `metric_sources`; source, grain, freshness, coverage and gap-fill count per metric, rendered on each card and in a panel; two-source sample CSV | ◐ | This is lineage and labelling, **not a live connector**. A real second datasource is out of MVP scope and should not be claimed |
+| **P0 3** | Show LLM vs non-LLM breakdown in the UI | `MethodPanel` — 12 deterministic stages vs exactly 1 LLM call, LLM row rendered from live run data; per-anomaly provenance line | ✅ | — |
+| **P0 4** | Show cost + latency telemetry in the UI | `TelemetryChip` — total/C1/C3 latency, token count, estimated cost with its derivation basis | ✅ | — |
+| **P1 5** | Add a feedback button | `POST /feedback` (JSONL, degrades to `recorded:false`, never 500) + `FeedbackControl` on the narrative and every anomaly, with enumerated corrections | ✅ | Nothing reads the log back — deliberate, and stated in the UI copy |
+| **P1 6** | `owner` + `monitoring_plan` on `Adjustment` | Nothing | ⬜ | **C3** owns the schema and the values — §1.4 |
+| **P1 7** | Root README, one-command start, remove internal docs | Already done by C1 at integration. C2 fixed `start.sh`/`start.ps1` to set `PYTHONPATH` so a clean clone runs without `pip install -e backend` | ✅ | — |
+| **P1 8** | Role-based security / entitlement demo | Statistical fields withheld from the executive view, with an explicit on-screen note that this is presentation-layer redaction, not enforcement | ✅ | Real row/column security belongs at the data layer; out of MVP scope |
+| **P2 9** | Source freshness on anomaly cards | Source, grain, as-of period, point count and gap-fill count on each card | ✅ | — |
+| **P2 10** | Alternative hypothesis under low confidence | Weak-signal caveat below `noise_confidence < 0.5`, naming what would resolve it | ◐ | **C1/C3** must emit the competing explanations — §1.2 |
+| **P2 11** | Frontend title and favicon | Title was already correct; brand `icon.svg` replaces the Next.js default; five unused create-next-app SVGs removed | ✅ | — |
+| **P2 12** | Health score as a gauge / coloured indicator | Meter beside the number plus a band label; **no bar at all on refusal**, since a grey track beside "N/A" reads as "scored, and bad" | ✅ | — |
+
+### Part 3 — minimum prototype expectations
+
+| Expectation | Critique | Now | Note |
+|---|---|---|---|
+| 3–5 KPIs across 2–3 sources, different grains | ❌ | ◐ | Per-metric source and grain in the manifest; two declared systems demoable. Still a single upload |
+| Lightweight KPI/semantic contract | ⚠️ | ✅ | `GET /metrics/{sector_id}` serves it at runtime from the same YAML the parser enforces |
+| ≥2 personas, different narratives or actions | ❌ | ◐ | Different **views** delivered; different **narratives** blocked on C3 |
+| One multi-factor KPI movement with known drivers | ⚠️ | ⚠️ | Unchanged — driver attribution is C1/C3 |
+| One low-confidence scenario with abstention | ✅ | ✅ | Strengthened: `NO_USABLE_METRICS` plus the weak-signal caveat |
+| Sparse-history / newly launched KPI scenario | ⚠️ | ⚠️ | Short-series warnings exist; still not a distinct named demo scenario |
+| Role-based security / entitlement scenario | ❌ | ✅ | Demo-level, honestly labelled |
+| Evidence: freshness, method, contribution, confidence, lineage | ❌ | ◐ | freshness ✅ · method ✅ · confidence ✅ · lineage ✅ · **contribution ❌** |
+| Clear LLM vs non-LLM breakdown | ⚠️ | ✅ | `MethodPanel`; also corrected two wrong verification commands in `llm-vs-deterministic.md` |
+| Runtime telemetry: latency, model calls, tokens, cost | ⚠️ | ✅ | `TelemetryChip` |
+
+Movement on these ten rows: **2✅ / 5⚠️ / 3❌ → 5✅ / 3◐ / 2⚠️ / 0❌.**
+
+The one hard gap that remains is **contribution / driver attribution** — which
+of several correlated anomalies is the driver and which are symptoms. That is
+C1 and C3's, and it is the deepest requirement still unmet.
+
+### Part 2 — requirement level
+
+| Req | After this work | Remainder owned by |
+|---|---|---|
+| 1 — Detect and prioritise material movements | Unchanged | C1 (business-impact materiality, decision urgency) |
+| 2 — Reconcile heterogeneous sources | Lineage, grain and freshness now surfaced | Real multi-source ingestion — out of MVP scope |
+| 3 — Identify and rank explanatory drivers | Unchanged; method labels now visible | **C1/C3 — the biggest remaining gap** |
+| 4 — Persona narratives with traceable evidence | Evidence chain substantially improved (manifest + method panel + telemetry + per-card provenance) | C3 for persona-varied prose — §1.1 |
+| 5 — Communicate uncertainty, abstain | Strengthened | — |
+| 6 — Practical actions grounded in levers | Unchanged | C3 — §1.4 |
+| 7 — Learn from feedback | Capture mechanism now exists | Nothing consumes the log yet (roadmap, stated) |
+| 8 — Security, cost, latency, scalability | Telemetry ✅, CORS tightened ✅ | Auth, rate limiting, row/column security, LLM caching — none attempted |
+
+### Not attempted, on purpose
+
+`docs/critique.md` Part 5's core charge — that the system is a *peer-benchmark
+health checker* rather than a *KPI intelligence-to-action engine* — is an
+architectural criticism of C1's detection model, not something C2 can close from
+the API and rendering layer. It is recorded here so nobody assumes it was
+addressed.
