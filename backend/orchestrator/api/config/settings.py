@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     MAX_UPLOAD_MB: int = 10
     FEEDBACK_LOG_PATH: str = "./feedback.jsonl"
 
+    # Comma-separated origins allowed to call this API. Defaults to the local
+    # frontend only — NOT "*", which is what shipped through Phase 0-3 behind a
+    # "tighten before any real deployment" comment that never got actioned and
+    # which the Round 2 critique names directly. Set explicitly when deploying;
+    # "*" still works if genuinely wanted, but now it is a deliberate choice
+    # someone made rather than a default nobody revisited.
+    CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
+
     # Real C1's module is confirmed (Contract §5, §9 item 10). C3's is not —
     # single constants so confirmation is a one-line change, not a grep-and-pray
     # (Phase1-Plan T1.1).

@@ -155,6 +155,21 @@ export function AnomalyCard({
           any anomaly card"). Every figure above — z-score, severity, the
           noise verdict — came from deterministic code, and the card should
           say so where the numbers are, not only in the panel at the end. */}
+      {/* P2 item 10, the half C2 can honestly deliver. The problem statement
+          asks for alternative hypotheses under low confidence; naming the
+          competing explanations is C1/C3's job (they hold the correlation
+          model and the case base). What C2 owns is not letting a weak signal
+          render with the same authority as a strong one, and saying what would
+          resolve it. We state the uncertainty; we do not invent the rival
+          explanation. */}
+      {anomaly.noise_confidence < 0.5 && (
+        <p className="mt-3 rounded-sm border border-rule bg-white/40 p-2 text-[11px] text-ink-muted">
+          Weak signal — {(anomaly.noise_confidence * 100).toFixed(0)}% confidence this is structural
+          rather than noise. Treat it as a question, not a finding: more periods would settle whether
+          this is a real shift or normal variation.
+        </p>
+      )}
+
       {source && (
         <p className="mt-3 text-[11px] text-ink-muted">
           Source: {source.source_system ?? "not declared"}

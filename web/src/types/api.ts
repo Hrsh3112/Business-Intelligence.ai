@@ -89,6 +89,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metrics/{sector_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Metric Catalog
+         * @description `sector_id` is accepted case-insensitively; TECH_SAAS and RETAIL are the
+         *     only sectors in MVP scope.
+         */
+        get: operations["metric_catalog_metrics__sector_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -590,6 +611,55 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * MetricCatalogEntry
+         * @description One metric as the system actually defines it — the machine-readable
+         *     half of the KPI semantic contract.
+         *
+         *     `docs/kpi-semantic-contract.md` describes these in prose; this serves the
+         *     same facts from `metric_config.yaml` at runtime, so a consumer can discover
+         *     what the system accepts instead of reading a document and guessing. The
+         *     prose doc and this endpoint therefore cannot drift: both are the YAML.
+         */
+        MetricCatalogEntry: {
+            /** Metric Id */
+            metric_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Unit */
+            unit: string;
+            /** Category */
+            category: string;
+            /** Direction */
+            direction: string;
+            /** Valid Min */
+            valid_min?: number | null;
+            /** Valid Max */
+            valid_max?: number | null;
+            /**
+             * Accepted Aliases
+             * @default []
+             */
+            accepted_aliases: string[];
+        };
+        /** MetricCatalogResponse */
+        MetricCatalogResponse: {
+            /** Sector Id */
+            sector_id: string;
+            /** Metric Count */
+            metric_count: number;
+            /** Metrics */
+            metrics: components["schemas"]["MetricCatalogEntry"][];
+            /**
+             * Min Periods
+             * @default {}
+             */
+            min_periods: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+        };
         /** MetricEntry */
         MetricEntry: {
             /** Metric Id */
@@ -1079,6 +1149,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeedbackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metric_catalog_metrics__sector_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricCatalogResponse"];
                 };
             };
             /** @description Validation Error */

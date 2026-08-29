@@ -173,6 +173,38 @@ class Timings(BaseModel):
     total_ms: int
 
 
+class MetricCatalogEntry(BaseModel):
+    """One metric as the system actually defines it — the machine-readable
+    half of the KPI semantic contract.
+
+    `docs/kpi-semantic-contract.md` describes these in prose; this serves the
+    same facts from `metric_config.yaml` at runtime, so a consumer can discover
+    what the system accepts instead of reading a document and guessing. The
+    prose doc and this endpoint therefore cannot drift: both are the YAML.
+    """
+
+    metric_id: str
+    display_name: str
+    unit: str  # percentage | currency_usd | ratio
+    category: str
+    direction: str  # higher_is_better | lower_is_better | target_band
+    valid_min: Optional[float] = None
+    valid_max: Optional[float] = None
+    # What C2's resolver accepts as a column header for this metric. Published
+    # so a caller can format a CSV that will actually resolve, rather than
+    # discovering the alias table by trial and error.
+    accepted_aliases: list[str] = []
+
+
+class MetricCatalogResponse(BaseModel):
+    sector_id: str
+    metric_count: int
+    metrics: list[MetricCatalogEntry]
+    # Echoed from config rather than restated, so the periods the API enforces
+    # and the periods it advertises are always the same numbers.
+    min_periods: dict[str, dict[str, int]] = {}
+
+
 class MetricSource(BaseModel):
     """Provenance for one submitted metric (Stage 4 — critique P0 #2 / Req 2).
 
