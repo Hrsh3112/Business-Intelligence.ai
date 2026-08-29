@@ -1,5 +1,5 @@
 {
-  "job_id": "76f0e6d0-3778-4946-9639-315059b911ad",
+  "job_id": "b3e8b347-a2f7-4597-98de-9b977a8ef023",
   "status": "complete",
   "result": {
     "$schema": "enriched_report_v1",
@@ -44,42 +44,50 @@
               {
                 "period": "2024-01",
                 "value": 2.1,
-                "z_score": 0.125
+                "z_score": 0.125,
+                "interpolated": false
               },
               {
                 "period": "2024-02",
                 "value": 2.5,
-                "z_score": 0.625
+                "z_score": 0.625,
+                "interpolated": false
               },
               {
                 "period": "2024-03",
                 "value": 3.0,
-                "z_score": 1.25
+                "z_score": 1.25,
+                "interpolated": false
               },
               {
                 "period": "2024-04",
                 "value": 3.4,
-                "z_score": 1.75
+                "z_score": 1.75,
+                "interpolated": false
               },
               {
                 "period": "2024-05",
                 "value": 3.9,
-                "z_score": 2.375
+                "z_score": 2.375,
+                "interpolated": false
               },
               {
                 "period": "2024-06",
                 "value": 4.3,
-                "z_score": 2.875
+                "z_score": 2.875,
+                "interpolated": false
               },
               {
                 "period": "2024-07",
                 "value": 4.8,
-                "z_score": 3.5
+                "z_score": 3.5,
+                "interpolated": false
               },
               {
                 "period": "2024-08",
                 "value": 5.2,
-                "z_score": 4.0
+                "z_score": 4.0,
+                "interpolated": false
               }
             ]
           },
@@ -118,42 +126,50 @@
               {
                 "period": "2024-01",
                 "value": 106.0,
-                "z_score": 1.0
+                "z_score": 1.0,
+                "interpolated": false
               },
               {
                 "period": "2024-02",
                 "value": 103.0,
-                "z_score": 0.5
+                "z_score": 0.5,
+                "interpolated": false
               },
               {
                 "period": "2024-03",
                 "value": 101.0,
-                "z_score": 0.167
+                "z_score": 0.167,
+                "interpolated": false
               },
               {
                 "period": "2024-04",
                 "value": 98.0,
-                "z_score": -0.333
+                "z_score": -0.333,
+                "interpolated": false
               },
               {
                 "period": "2024-05",
                 "value": 96.0,
-                "z_score": -0.667
+                "z_score": -0.667,
+                "interpolated": false
               },
               {
                 "period": "2024-06",
                 "value": 93.0,
-                "z_score": -1.167
+                "z_score": -1.167,
+                "interpolated": false
               },
               {
                 "period": "2024-07",
                 "value": 91.0,
-                "z_score": -1.5
+                "z_score": -1.5,
+                "interpolated": false
               },
               {
                 "period": "2024-08",
                 "value": 88.0,
-                "z_score": -2.0
+                "z_score": -2.0,
+                "interpolated": false
               }
             ]
           },
@@ -172,9 +188,14 @@
       "non_anomalous_highlights": [
         {
           "metric_id": "gross_margin",
+          "metric_display_name": null,
           "status": "healthy",
           "percentile": 62.0,
-          "note": "Gross margin remains stable near the expected baseline for this profile."
+          "note": "Gross margin remains stable near the expected baseline for this profile.",
+          "observed_value": null,
+          "expected_value": null,
+          "context_tags": null,
+          "natural_language_summary": null
         }
       ],
       "refusal": null,
@@ -270,14 +291,16 @@
       ],
       "prioritized_actions": [
         {
-          "action": "Investigate Churn Rate (%)",
-          "priority": "HIGH",
-          "rationale": "Flagged anomaly in this report."
+          "title": "Investigate Churn Rate (%)",
+          "description": "A SEVERE anomaly was detected in Churn Rate (%). Flagged for review.",
+          "impact": "HIGH",
+          "effort": "MEDIUM"
         },
         {
-          "action": "Investigate Net Revenue Retention (%)",
-          "priority": "HIGH",
-          "rationale": "Flagged anomaly in this report."
+          "title": "Investigate Net Revenue Retention (%)",
+          "description": "A CRITICAL anomaly was detected in Net Revenue Retention (%). Flagged for review.",
+          "impact": "HIGH",
+          "effort": "MEDIUM"
         }
       ],
       "positives": [
@@ -301,5 +324,50 @@
     "c1_ms": 200,
     "c3_ms": 1500,
     "total_ms": 1700
-  }
+  },
+  "cost": {
+    "llm_model": "mock-llm-v1",
+    "tokens_used": 512,
+    "estimated_usd": 7.7e-05,
+    "basis": "512 tokens @ $0.15/1M \u2014 mock model, priced at gemini-2.0-flash's rate for demo purposes"
+  },
+  "source_manifest": [
+    {
+      "metric_id": "churn_rate",
+      "display_name": "Churn Rate (%)",
+      "source_system": "CRM export (daily rollup)",
+      "source_basis": "declared",
+      "grain": "monthly",
+      "as_of_period": "2024-08",
+      "first_period": "2024-01",
+      "points": 8,
+      "interpolated_points": 0,
+      "confidence": 1.0
+    },
+    {
+      "metric_id": "net_revenue_retention",
+      "display_name": "Net Revenue Retention (%)",
+      "source_system": "ERP export (monthly)",
+      "source_basis": "declared",
+      "grain": "monthly",
+      "as_of_period": "2024-08",
+      "first_period": "2024-01",
+      "points": 8,
+      "interpolated_points": 0,
+      "confidence": 1.0
+    },
+    {
+      "metric_id": "gross_margin",
+      "display_name": "Gross Margin (%)",
+      "source_system": "ERP export (monthly)",
+      "source_basis": "declared",
+      "grain": "monthly",
+      "as_of_period": "2024-08",
+      "first_period": "2024-01",
+      "points": 8,
+      "interpolated_points": 0,
+      "confidence": 1.0
+    }
+  ],
+  "persona": "executive"
 }

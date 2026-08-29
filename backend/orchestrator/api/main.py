@@ -14,9 +14,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from api.config.settings import settings
 from api.models.internal import ApiResponse, ErrorCode, ParseWarning, ParseWarningCode, ValidateResponse
 from api.orchestration.adapters import C3ContractViolation
-from api.routes import analyze, health, validate
+from api.routes import analyze, feedback, health, metrics, validate
 
 # Root logger has no handler by default, so api.orchestration.pipeline's
 # structured stage logs (T1.6) would be silently dropped without this.
@@ -28,19 +29,23 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="businessintelligence.ai — C2 API", version="0.1.0")
 
-# Registered now so Phase 3 (frontend) doesn't stall on it. Tighten
-# allow_origins before any real deployment.
+# Origins come from config (default: the local frontend only). Note that
+# allow_origins=["*"] with allow_credentials=True is a combination browsers
+# reject outright, so the previous wildcard was both too permissive and
+# quietly broken for any credentialed request.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 app.include_router(health.router)
 app.include_router(analyze.router)
 app.include_router(validate.router)
+app.include_router(feedback.router)
+app.include_router(metrics.router)
 
 
 @app.exception_handler(RequestValidationError)

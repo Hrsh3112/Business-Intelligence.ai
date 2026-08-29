@@ -5,7 +5,9 @@
 interface TrendPoint {
   period: string;
   value: number;
-  z_score: number;
+  // Optional: C1 may omit it per point. The sparkline plots `value` only and
+  // never reads this, so a missing z-score costs the chart nothing.
+  z_score?: number | null;
 }
 
 interface SparklineProps {

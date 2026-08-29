@@ -14,6 +14,12 @@ export type ValidateResponse = components["schemas"]["ValidateResponse"];
 export type CompanyInput = components["schemas"]["CompanyInput"];
 export type SectorId = components["schemas"]["SectorId"];
 export type RevenueBand = components["schemas"]["RevenueBand"];
+export type FeedbackRequest = components["schemas"]["FeedbackRequest"];
+export type FeedbackResponse = components["schemas"]["FeedbackResponse"];
+export type FeedbackVerdict = components["schemas"]["FeedbackVerdict"];
+export type FeedbackCorrection = components["schemas"]["FeedbackCorrection"];
+export type MetricSource = components["schemas"]["MetricSource"];
+export type Persona = components["schemas"]["Persona"];
 
 // FormMetadata is invisible to the OpenAPI schema — the backend receives it
 // as an opaque JSON string inside a multipart field (see
@@ -28,6 +34,12 @@ export interface FormMetadata {
   annual_revenue?: number | null;
   revenue_band?: RevenueBand | null;
   raw_text_context?: string | null;
+  /** Provenance the user declares. Optional: an undeclared submission still
+   *  gets a manifest, with the source left unknown rather than guessed. */
+  source_system?: string | null;
+  metric_sources?: Record<string, string> | null;
+  /** Who the report is for. Selects what is shown, never what is computed. */
+  persona?: Persona;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -80,4 +92,20 @@ export async function analyzeUpload(
   }
   const response = await fetch(`${API_BASE_URL}/analyze/upload`, { method: "POST", body: form });
   return parseJsonOrThrow<ApiResponse>(response);
+}
+
+/**
+ * Feedback is a side channel: it must never disturb the report on screen. The
+ * caller treats a rejected promise as "not recorded" and nothing more — no
+ * error banner, no lost results.
+ */
+export async function submitFeedback(
+  feedback: Omit<FeedbackRequest, "target"> & { target?: FeedbackRequest["target"] }
+): Promise<FeedbackResponse> {
+  const response = await fetch(`${API_BASE_URL}/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(feedback),
+  });
+  return parseJsonOrThrow<FeedbackResponse>(response);
 }

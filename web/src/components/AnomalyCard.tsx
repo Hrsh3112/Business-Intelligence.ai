@@ -1,4 +1,6 @@
 import type { components } from "@/types/api";
+import type { MetricSource, Persona } from "@/lib/api";
+import { FeedbackControl } from "./FeedbackControl";
 import { SeverityConfidenceBar } from "./SeverityConfidenceBar";
 import { Sparkline } from "./Sparkline";
 
@@ -8,6 +10,11 @@ interface AnomalyCardProps {
   anomaly: Anomaly;
   highlightedId: string | null;
   onHighlight: (id: string | null) => void;
+  jobId: string;
+  /** Provenance for this metric, when the submission carried one. Absent for
+   *  computed metrics that were never submitted directly. */
+  source?: MetricSource;
+  persona: Persona;
 }
 
 const DIRECTION_LABEL: Record<string, string> = {
@@ -20,7 +27,18 @@ const DIRECTION_LABEL: Record<string, string> = {
  * signature severity/confidence marker plus every null-handling case that
  * WILL occur on real data.
  */
-export function AnomalyCard({ anomaly, highlightedId, onHighlight }: AnomalyCardProps) {
+export function AnomalyCard({
+  anomaly,
+  highlightedId,
+  onHighlight,
+  jobId,
+  source,
+  persona,
+}: AnomalyCardProps) {
+  // Entitlement: the analyst view carries the statistical apparatus, the
+  // executive view carries the business fact. Both read the same computed
+  // report — nothing here recomputes or rounds differently per persona.
+  const showStatistics = persona === "analyst";
   const isSelf = highlightedId === anomaly.anomaly_id;
   const isPartner = highlightedId !== null && anomaly.correlated_anomalies.includes(highlightedId);
   const isHighlighted = isSelf || isPartner;
@@ -87,7 +105,7 @@ export function AnomalyCard({ anomaly, highlightedId, onHighlight }: AnomalyCard
             <p className="text-xs text-ink-muted italic">trend needs 6+ periods</p>
           )}
           {/* slope / acceleration / periods_deviating: omit the row entirely when null, don't render a blank. */}
-          {anomaly.trend.slope !== null && anomaly.trend.slope !== undefined && (
+          {showStatistics && anomaly.trend.slope !== null && anomaly.trend.slope !== undefined && (
             <p className="data mt-1 text-xs text-ink-muted">
               slope {anomaly.trend.slope >= 0 ? "+" : ""}
               {anomaly.trend.slope.toFixed(3)}/period
@@ -132,6 +150,53 @@ export function AnomalyCard({ anomaly, highlightedId, onHighlight }: AnomalyCard
           ))}
         </p>
       )}
+
+      {/* Method provenance per anomaly (critique P0 #3: "no method label on
+          any anomaly card"). Every figure above — z-score, severity, the
+          noise verdict — came from deterministic code, and the card should
+          say so where the numbers are, not only in the panel at the end. */}
+      {/* P2 item 10, the half C2 can honestly deliver. The problem statement
+          asks for alternative hypotheses under low confidence; naming the
+          competing explanations is C1/C3's job (they hold the correlation
+          model and the case base). What C2 owns is not letting a weak signal
+          render with the same authority as a strong one, and saying what would
+          resolve it. We state the uncertainty; we do not invent the rival
+          explanation. */}
+      {anomaly.noise_confidence < 0.5 && (
+        <p className="mt-3 rounded-sm border border-rule bg-white/40 p-2 text-[11px] text-ink-muted">
+          Weak signal — {(anomaly.noise_confidence * 100).toFixed(0)}% confidence this is structural
+          rather than noise. Treat it as a question, not a finding: more periods would settle whether
+          this is a real shift or normal variation.
+        </p>
+      )}
+
+      {source && (
+        <p className="mt-3 text-[11px] text-ink-muted">
+          Source: {source.source_system ?? "not declared"}
+          {source.source_basis === "upload_filename" && " (from filename)"} · {source.grain} · as of{" "}
+          <span className="data">{source.as_of_period}</span> · {source.points} points
+          {source.interpolated_points > 0 && `, ${source.interpolated_points} gap-filled`}
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-2">
+        {showStatistics ? (
+          <p className="max-w-prose text-[11px] text-ink-muted">
+            Detected deterministically · z {anomaly.deviation.z_score.toFixed(2)} · percentile{" "}
+            {anomaly.deviation.percentile.toFixed(1)} · signal confidence{" "}
+            {(anomaly.noise_confidence * 100).toFixed(0)}% · severity{" "}
+            {anomaly.severity_score.toFixed(1)}/100 · no LLM involved in any figure on this card
+          </p>
+        ) : (
+          <p className="max-w-prose text-[11px] text-ink-muted">
+            Detected deterministically · no LLM involved in any figure on this card
+          </p>
+        )}
+        {/* Per-anomaly, not just per-report: "this one was noise" is the
+            correction an analyst actually wants to make, and it is meaningless
+            without knowing which anomaly they meant. */}
+        <FeedbackControl jobId={jobId} target="anomaly" anomalyId={anomaly.anomaly_id} />
+      </div>
     </article>
   );
 }

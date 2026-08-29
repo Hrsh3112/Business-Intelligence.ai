@@ -45,7 +45,15 @@
 To confirm LLM is not used in statistical calculations, run:
 
 ```bash
-grep -r "genai" backend/core/       # Should return nothing
-grep -r "genai" backend/api/api/    # Should return nothing
-grep -r "genai" backend/enrichment/ # Should return only c3_engine/narrative.py
+# Detection (C1) and the API/orchestration layer (C2): no LLM at all.
+grep -rn "genai" backend/core/ backend/orchestrator/   # returns nothing
+
+# Enrichment (C3): exactly one module imports it, plus that module's own test.
+grep -rln "genai" backend/enrichment/ --include=*.py
+#   backend/enrichment/c3_engine/narrative.py
+#   backend/enrichment/test_c3.py
 ```
+
+Both commands were run against this tree and produce the output shown.
+`--include=*.py` matters on the second one: without it, a stale
+`__pycache__/*.pyc` also matches and makes the result look wrong.

@@ -12,7 +12,10 @@ if (-not (Test-Path ".env")) {
 
 Write-Host "" 
 Write-Host "[1/2] Launching Backend API (FastAPI) on http://localhost:8000..." -ForegroundColor Green
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "Set-Location backend; python -m uvicorn api.main:app --reload --port 8000"
+# PYTHONPATH mirrors backend/pytest.ini, so `api`, `ml_engine` and `c3_engine`
+# resolve from a clean clone without `pip install -e backend` first. The
+# backtick escapes $env: so it is set in the child shell, not expanded here.
+Start-Process pwsh -ArgumentList "-NoExit", "-Command", "Set-Location backend; `$env:PYTHONPATH='core;enrichment;orchestrator'; python -m uvicorn api.main:app --reload --port 8000"
 
 Write-Host "[2/2] Launching Frontend (Next.js) on http://localhost:3000..." -ForegroundColor Green
 Start-Process pwsh -ArgumentList "-NoExit", "-Command", "Set-Location web; npm run dev"

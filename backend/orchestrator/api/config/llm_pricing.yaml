@@ -1,0 +1,29 @@
+# LLM pricing table — the only place rates live. Nothing in api/ hardcodes a
+# price (CLAUDE.md: no hardcoded thresholds outside config).
+#
+# WHY A SINGLE BLENDED RATE: C3 reports one `llm_tokens_used` total, not an
+# input/output split, so a blended rate is the most we can honestly apply. If
+# C3 ever splits the count, add input/output rates here and widen
+# estimate_cost() to match — the shape below is deliberately not final.
+#
+# WHY THIS MATTERS: the number derived here is shown to the user. It is an
+# ESTIMATE derived from a published rate, never a measurement. Any model with
+# no entry below yields a null cost and says so — we never invent a price, the
+# same rule that applies to every other number in this system.
+
+models:
+  gemini-2.0-flash:
+    blended_usd_per_1m: 0.15
+    # Google's published rate is $0.10/1M input, $0.40/1M output. 0.15 assumes
+    # the prompt-heavy mix this pipeline actually produces (a large anomaly
+    # report in, a short structured narrative out). Revisit if the prompt or
+    # the published pricing changes.
+    basis: "blended from published Google pricing (input $0.10 / output $0.40 per 1M)"
+
+  mock-llm-v1:
+    blended_usd_per_1m: 0.15
+    # The mock bills nothing in reality. It is priced at the real model's rate
+    # so the telemetry chip is demonstrable on mocks; the response carries the
+    # model name `mock-llm-v1`, so the estimate is self-disclosing rather than
+    # a claim about real spend.
+    basis: "mock model, priced at gemini-2.0-flash's rate for demo purposes"

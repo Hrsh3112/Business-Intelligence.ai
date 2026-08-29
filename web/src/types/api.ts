@@ -72,18 +72,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Feedback */
+        post: operations["feedback_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics/{sector_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Metric Catalog
+         * @description `sector_id` is accepted case-insensitively; TECH_SAAS and RETAIL are the
+         *     only sectors in MVP scope.
+         */
+        get: operations["metric_catalog_metrics__sector_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** ActionItem */
         ActionItem: {
-            /** Action */
-            action: string;
-            /** Priority */
-            priority: string;
-            /** Rationale */
-            rationale: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Impact
+             * @enum {string}
+             */
+            impact: "HIGH" | "MEDIUM" | "LOW";
+            /**
+             * Effort
+             * @enum {string}
+             */
+            effort: "HIGH" | "MEDIUM" | "LOW";
         };
         /** Adjustment */
         Adjustment: {
@@ -121,6 +167,8 @@ export interface components {
             priority: "HIGH" | "MEDIUM" | "LOW";
             /** Rationale */
             rationale: string;
+        } & {
+            [key: string]: unknown;
         };
         /** Anomaly */
         Anomaly: {
@@ -137,14 +185,22 @@ export interface components {
             severity_label: components["schemas"]["SeverityLabel"];
             deviation: components["schemas"]["DeviationDetail"];
             trend: components["schemas"]["TrendDetail"];
-            /** Correlated Anomalies */
+            /**
+             * Correlated Anomalies
+             * @default []
+             */
             correlated_anomalies: string[];
             /** Noise Confidence */
             noise_confidence: number;
-            /** Context Tags */
+            /**
+             * Context Tags
+             * @default []
+             */
             context_tags: string[];
             /** Natural Language Summary */
             natural_language_summary: string;
+        } & {
+            [key: string]: unknown;
         };
         /** AnomalyReport */
         AnomalyReport: {
@@ -156,10 +212,7 @@ export interface components {
             /** Company Id */
             company_id: string;
             sector_id: components["schemas"]["SectorId"];
-            /**
-             * Analysis Timestamp
-             * Format: date-time
-             */
+            /** Analysis Timestamp */
             analysis_timestamp: string;
             reporting_period: components["schemas"]["ReportingPeriod"];
             company_profile_summary: components["schemas"]["CompanyProfileSummary"];
@@ -176,7 +229,9 @@ export interface components {
              */
             non_anomalous_highlights: components["schemas"]["HealthyHighlight"][];
             refusal?: components["schemas"]["RefusalDetail"] | null;
-            metadata: components["schemas"]["ReportMetadata"];
+            metadata?: components["schemas"]["ReportMetadata"];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * ApiResponse
@@ -199,6 +254,14 @@ export interface components {
             warnings: components["schemas"]["ParseWarning"][];
             error?: components["schemas"]["ErrorCode"] | null;
             timings?: components["schemas"]["Timings"] | null;
+            cost?: components["schemas"]["CostEstimate"] | null;
+            /**
+             * Source Manifest
+             * @default []
+             */
+            source_manifest: components["schemas"]["MetricSource"][];
+            /** @default executive */
+            persona: components["schemas"]["Persona"];
         };
         /** Body_analyze_upload_analyze_upload_post */
         Body_analyze_upload_analyze_upload_post: {
@@ -227,6 +290,7 @@ export interface components {
             metrics: components["schemas"]["MetricEntry"][];
             /** Raw Text Context */
             raw_text_context?: string | null;
+            persona?: components["schemas"]["Persona"] | null;
         };
         /** CompanyMetadata */
         CompanyMetadata: {
@@ -247,8 +311,37 @@ export interface components {
             revenue_band: components["schemas"]["RevenueBand"];
             /** Employee Count */
             employee_count: number;
-            /** Region */
-            region: string;
+            /**
+             * Region
+             * @default NA
+             */
+            region: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CostEstimate
+         * @description What the one LLM call cost, as far as we can honestly say.
+         *
+         *     C2-owned and on C2's envelope on purpose. The token count and model name
+         *     come from C3's EnrichmentMetadata, but the *price* is ours to derive — and
+         *     we already carry one unsigned addition to a shared model
+         *     (EnrichmentMetadata.degraded_reason, Deviation #1). A second one would be
+         *     worse manners than keeping our own derivation on our own envelope.
+         *
+         *     `estimated_usd` is None whenever we cannot stand behind a figure — an
+         *     unpriced model, or no LLM call at all. It is never 0.0 as a stand-in for
+         *     unknown. `basis` records how the figure was reached so it can be defended.
+         */
+        CostEstimate: {
+            /** Llm Model */
+            llm_model?: string | null;
+            /** Tokens Used */
+            tokens_used?: number | null;
+            /** Estimated Usd */
+            estimated_usd?: number | null;
+            /** Basis */
+            basis?: string | null;
         };
         /** DataPoint */
         DataPoint: {
@@ -275,6 +368,8 @@ export interface components {
             /** Percentile */
             percentile: number;
             direction: components["schemas"]["DeviationDirection"];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DeviationDirection
@@ -306,6 +401,8 @@ export interface components {
             matched_cases: components["schemas"]["MatchedCase"][];
             narrative?: components["schemas"]["Narrative"] | null;
             metadata: components["schemas"]["EnrichmentMetadata"];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * EnrichmentMetadata
@@ -330,11 +427,20 @@ export interface components {
             llm_model?: string | null;
             /** Llm Tokens Used */
             llm_tokens_used?: number | null;
-            /** Processing Time Ms */
+            /**
+             * Processing Time Ms
+             * @default 0
+             */
             processing_time_ms: number;
-            /** Cases Searched */
+            /**
+             * Cases Searched
+             * @default 0
+             */
             cases_searched: number;
-            /** Cases Matched */
+            /**
+             * Cases Matched
+             * @default 0
+             */
             cases_matched: number;
             /**
              * Unmatched Anomaly Ids
@@ -348,6 +454,8 @@ export interface components {
             degraded: boolean;
             /** Degraded Reason */
             degraded_reason?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * ErrorCode
@@ -357,7 +465,58 @@ export interface components {
          *     type as an enum rather than a bare string.
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_ERROR" | "C1_TIMEOUT" | "C1_FAILED" | "C1_UNAVAILABLE" | "C3_TIMEOUT" | "C3_FAILED" | "C3_CONTRACT_VIOLATION" | "INTERNAL_ERROR";
+        ErrorCode: "VALIDATION_ERROR" | "NO_USABLE_METRICS" | "C1_TIMEOUT" | "C1_FAILED" | "C1_UNAVAILABLE" | "C3_TIMEOUT" | "C3_FAILED" | "C3_CONTRACT_VIOLATION" | "INTERNAL_ERROR";
+        /**
+         * FeedbackCorrection
+         * @description The specific corrections an analyst can make, from the four the critique
+         *     names: "this was noise, suppress it", "more severe than the score
+         *     suggests", and the root-cause correction workflow. Enumerated rather than
+         *     free text so the log is aggregatable later — a pile of prose comments is
+         *     not a feedback signal anyone can act on.
+         * @enum {string}
+         */
+        FeedbackCorrection: "was_noise" | "severity_understated" | "severity_overstated" | "wrong_root_cause";
+        /**
+         * FeedbackRequest
+         * @description What a user submits about a report they were just shown.
+         *
+         *     Scope honesty: this records a verdict, it does not retrain anything. The
+         *     endpoint appends to a file. Nothing in the pipeline reads it back yet, and
+         *     no claim to the contrary belongs in the UI or the deck — the Living
+         *     Knowledge Base loop is roadmap, and this is its first hop.
+         */
+        FeedbackRequest: {
+            /** Job Id */
+            job_id: string;
+            /**
+             * Target
+             * @default report
+             * @enum {string}
+             */
+            target: "report" | "narrative" | "anomaly";
+            /** Anomaly Id */
+            anomaly_id?: string | null;
+            verdict: components["schemas"]["FeedbackVerdict"];
+            correction?: components["schemas"]["FeedbackCorrection"] | null;
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * FeedbackResponse
+         * @description Deliberately not an ApiResponse: feedback is not a pipeline run, and
+         *     reusing that envelope would imply a job_id/status/result it does not have.
+         */
+        FeedbackResponse: {
+            /** Recorded */
+            recorded: boolean;
+            /** Message */
+            message: string;
+        };
+        /**
+         * FeedbackVerdict
+         * @enum {string}
+         */
+        FeedbackVerdict: "useful" | "not_useful";
         /**
          * Granularity
          * @enum {string}
@@ -372,12 +531,27 @@ export interface components {
         HealthyHighlight: {
             /** Metric Id */
             metric_id: string;
-            /** Status */
-            status: string;
+            /** Metric Display Name */
+            metric_display_name?: string | null;
+            /**
+             * Status
+             * @default healthy
+             */
+            status: string | null;
             /** Percentile */
-            percentile: number;
+            percentile?: number | null;
             /** Note */
-            note: string;
+            note?: string | null;
+            /** Observed Value */
+            observed_value?: number | null;
+            /** Expected Value */
+            expected_value?: number | null;
+            /** Context Tags */
+            context_tags?: string[] | null;
+            /** Natural Language Summary */
+            natural_language_summary?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** InferredMetadata */
         InferredMetadata: {
@@ -434,6 +608,57 @@ export interface components {
             root_causes: string[];
             /** Recommended Actions */
             recommended_actions: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * MetricCatalogEntry
+         * @description One metric as the system actually defines it — the machine-readable
+         *     half of the KPI semantic contract.
+         *
+         *     `docs/kpi-semantic-contract.md` describes these in prose; this serves the
+         *     same facts from `metric_config.yaml` at runtime, so a consumer can discover
+         *     what the system accepts instead of reading a document and guessing. The
+         *     prose doc and this endpoint therefore cannot drift: both are the YAML.
+         */
+        MetricCatalogEntry: {
+            /** Metric Id */
+            metric_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Unit */
+            unit: string;
+            /** Category */
+            category: string;
+            /** Direction */
+            direction: string;
+            /** Valid Min */
+            valid_min?: number | null;
+            /** Valid Max */
+            valid_max?: number | null;
+            /**
+             * Accepted Aliases
+             * @default []
+             */
+            accepted_aliases: string[];
+        };
+        /** MetricCatalogResponse */
+        MetricCatalogResponse: {
+            /** Sector Id */
+            sector_id: string;
+            /** Metric Count */
+            metric_count: number;
+            /** Metrics */
+            metrics: components["schemas"]["MetricCatalogEntry"][];
+            /**
+             * Min Periods
+             * @default {}
+             */
+            min_periods: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
         };
         /** MetricEntry */
         MetricEntry: {
@@ -442,6 +667,58 @@ export interface components {
             granularity: components["schemas"]["Granularity"];
             /** Values */
             values: components["schemas"]["DataPoint"][];
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number;
+        };
+        /**
+         * MetricSource
+         * @description Provenance for one submitted metric (Stage 4 — critique P0 #2 / Req 2).
+         *
+         *     WHY THIS LIVES ON C2's ENVELOPE: the frontend only ever receives the
+         *     EnrichedReport, so today it can see nothing about the CompanyInput that
+         *     produced it. C2 holds that input. Deriving the manifest here means the
+         *     lineage, grain and freshness reach the UI without a single change to C1's
+         *     or C3's schemas.
+         *
+         *     WHAT IS REAL vs DECLARED — the distinction matters if a judge asks:
+         *       * grain, as_of_period, period range, point counts, interpolated counts
+         *         and confidence are all COMPUTED from the data actually submitted.
+         *       * source_system is DECLARED by the user (or inferred from the uploaded
+         *         filename). `source_basis` records which, so the label is never passed
+         *         off as something the system verified.
+         */
+        MetricSource: {
+            /** Metric Id */
+            metric_id: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Source System */
+            source_system?: string | null;
+            /**
+             * Source Basis
+             * @default unknown
+             * @enum {string}
+             */
+            source_basis: "declared" | "upload_filename" | "unknown";
+            /** Grain */
+            grain: string;
+            /** As Of Period */
+            as_of_period?: string | null;
+            /** First Period */
+            first_period?: string | null;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+            /**
+             * Interpolated Points
+             * @default 0
+             */
+            interpolated_points: number;
             /**
              * Confidence
              * @default 1
@@ -474,6 +751,47 @@ export interface components {
          * @enum {string}
          */
         ParseWarningCode: "UNKNOWN_METRIC" | "UNIT_SCALE_SUSPECT" | "OUT_OF_RANGE" | "SHORT_SERIES" | "INTERPOLATED_POINTS" | "SECTOR_MISMATCH" | "AMBIGUOUS_MAPPING" | "SCHEMA_VALIDATION_ERROR" | "DATE_TRUNCATED" | "TWO_DIGIT_YEAR_FUTURE" | "AMBIGUOUS_NUMBER_FORMAT" | "MIXED_GRANULARITY" | "AMBIGUOUS_SHAPE" | "SERIES_TRIMMED" | "INTERPOLATION_HEAVY" | "CONSTANT_SERIES" | "SPARSE_SERIES" | "DUPLICATE_PERIOD" | "REFUSAL_LIKELY";
+        /**
+         * Persona
+         * @description Who the report is being produced for.
+         *
+         *     ⚠️ C2-PROPOSED ADDITION TO THE SHARED SCHEMA — NOT SIGNED OFF.
+         *     The only field C2 has added to this file. Recorded in full because the
+         *     next person to read it needs the whole story.
+         *
+         *     WHY IT IS HERE. The problem statement requires at least two personas
+         *     receiving different narratives. The narrative is C3's, generated from an
+         *     AnomalyReport. For a persona to influence that prose it must reach the C3
+         *     call, and the only route that does not breach C2's architectural boundary
+         *     (`run_pipeline()` takes a CompanyInput and nothing else) is to carry it
+         *     inside the CompanyInput. Hence a field on the shared contract.
+         *
+         *     WHY IT IS SAFE FOR C1. `ml_engine.models.input_schema.CompanyInput`
+         *     declares no `model_config`, so Pydantic v2's default `extra="ignore"`
+         *     applies: `orchestration/c1_adapter.py` dumps and revalidates through that
+         *     model, and this field is dropped before C1 ever sees it. Verified against
+         *     C1's source. C1 needs no change and cannot break on this.
+         *
+         *     HOW IT REACHES C3. Because C1 drops it, C2 re-attaches it to the
+         *     AnomalyReport after C1 returns and before calling C3 (see
+         *     `orchestration/pipeline.py`). C3's own AnomalyReport model sets
+         *     `extra="allow"`, so it survives that crossing.
+         *
+         *     ⚠️ THIS FIELD DOES NOTHING ON ITS OWN — C3 MUST STILL ACT.
+         *     `c3_engine/narrative.py` builds a single prompt and has no persona
+         *     concept, so today the value arrives and is ignored: narrative prose is
+         *     IDENTICAL for both personas. C3 must read `anomaly_report.persona` and
+         *     vary the prompt before the requirement is actually met. Until then, do
+         *     not claim persona-tailored narratives in the deck or the demo. C2's own
+         *     persona work is a rendering/entitlement distinction — a different, and
+         *     separately defensible, claim.
+         *
+         *     SEMANTIC CAVEAT. This describes the reader, not the company, so it sits
+         *     oddly on CompanyInput. It is here because it is the only
+         *     boundary-respecting route, not because it is the tidiest home.
+         * @enum {string}
+         */
+        Persona: "executive" | "analyst";
         /** Prescription */
         Prescription: {
             /** Anomaly Id */
@@ -482,6 +800,8 @@ export interface components {
             prescribed_adjustments: components["schemas"]["Adjustment"][];
             /** Prescription Summary */
             prescription_summary: string;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * RefusalDetail
@@ -501,6 +821,12 @@ export interface components {
             message?: string | null;
             /** Suggested Resolution */
             suggested_resolution?: string | null;
+            /** Diagnostic Suggestion */
+            diagnostic_suggestion?: string | null;
+            /** Required Data */
+            required_data?: string | null;
+            /** Missing Metrics */
+            missing_metrics?: string[] | null;
         } & {
             [key: string]: unknown;
         };
@@ -511,23 +837,40 @@ export interface components {
         RefusalReason: "no_metrics_submitted" | "low_data_confidence" | "insufficient_periods" | "contradictory_evidence";
         /** ReportMetadata */
         ReportMetadata: {
-            /** Model Version */
+            /**
+             * Model Version
+             * @default 0.1.0-mvp
+             */
             model_version: string;
             /** Synthetic Profile Version */
             synthetic_profile_version?: string | null;
-            /** Metrics Analyzed */
-            metrics_analyzed: number;
-            /** Metrics With Anomalies */
-            metrics_with_anomalies: number;
-            /** Metrics With Missing Data */
-            metrics_with_missing_data: number;
+            /**
+             * Metrics Analyzed
+             * @default 0
+             */
+            metrics_analyzed: number | string[];
+            /**
+             * Metrics With Anomalies
+             * @default 0
+             */
+            metrics_with_anomalies: number | string[];
+            /**
+             * Metrics With Missing Data
+             * @default 0
+             */
+            metrics_with_missing_data: number | string[];
             /**
              * Skipped Metrics
              * @default []
              */
             skipped_metrics: string[];
-            /** Processing Time Ms */
+            /**
+             * Processing Time Ms
+             * @default 0
+             */
             processing_time_ms: number;
+        } & {
+            [key: string]: unknown;
         };
         /** ReportingPeriod */
         ReportingPeriod: {
@@ -584,6 +927,8 @@ export interface components {
             periods_deviating?: number | null;
             /** Values Over Time */
             values_over_time?: components["schemas"]["TrendPoint"][] | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * TrendDirection
@@ -597,7 +942,14 @@ export interface components {
             /** Value */
             value: number;
             /** Z Score */
-            z_score: number;
+            z_score?: number | null;
+            /**
+             * Interpolated
+             * @default false
+             */
+            interpolated: boolean;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * ValidateResponse
@@ -764,6 +1116,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feedback_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metric_catalog_metrics__sector_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricCatalogResponse"];
                 };
             };
             /** @description Validation Error */

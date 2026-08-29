@@ -199,11 +199,34 @@ def build_company_input(
         reporting_period=ReportingPeriod(type=overall_granularity, start=start, end=end),
         metrics=entries,
         raw_text_context=form_metadata.raw_text_context,
+        # Carried inside CompanyInput so it can reach C3 without run_pipeline()
+        # taking a second argument. C1 drops it (extra="ignore"); the pipeline
+        # re-attaches it to the report afterwards. See shared.Persona.
+        persona=form_metadata.persona,
     )
+
+    # Nothing usable survived. C2 must not hand C1 an empty metrics list: C1
+    # would answer NO_METRICS_SUBMITTED, which is false — the user did submit
+    # data, we discarded all of it, and the reasons live in `warnings` where
+    # the refusal itself would never show them. Block here instead, so the
+    # caller can say precisely what happened to each column.
+    blocking_errors: list[str] = []
+    if proposals and not entries:
+        if not resolved_cells:
+            blocking_errors.append(
+                f"None of the {len(proposals)} column(s) in your file matched a metric we "
+                f"recognise for {form_metadata.sector_id.value}. Nothing was analysed."
+            )
+        else:
+            blocking_errors.append(
+                f"All {len(resolved_cells)} recognised metric(s) were excluded during "
+                f"validation, so there was nothing left to analyse. See the per-column "
+                f"notes below for what happened to each."
+            )
 
     return ParseResult(
         company_input=company_input,
         proposals=proposals,
         warnings=warnings,
-        blocking_errors=[],
+        blocking_errors=blocking_errors,
     )

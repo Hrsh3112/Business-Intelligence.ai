@@ -1,5 +1,5 @@
 {
-  "job_id": "e865ba61-5ca9-4143-9d87-6ace253f8719",
+  "job_id": "4e47689c-4fbe-4a45-97aa-0ea739fde585",
   "status": "refused",
   "result": {
     "$schema": "enriched_report_v1",
@@ -24,7 +24,10 @@
       "refusal": {
         "reason": "insufficient_periods",
         "message": "Every submitted metric has fewer than 6 monthly periods, the floor for full trend analysis. We can't reliably separate a genuine shift from noise with this little history.",
-        "suggested_resolution": "Submit at least 6 consecutive monthly periods for at least one metric to receive a full analysis."
+        "suggested_resolution": "Submit at least 6 consecutive monthly periods for at least one metric to receive a full analysis.",
+        "diagnostic_suggestion": null,
+        "required_data": null,
+        "missing_metrics": null
       },
       "metadata": {
         "model_version": "0.1.0-mock",
@@ -57,5 +60,50 @@
     "c1_ms": 200,
     "c3_ms": null,
     "total_ms": 205
-  }
+  },
+  "cost": {
+    "llm_model": null,
+    "tokens_used": null,
+    "estimated_usd": null,
+    "basis": "no LLM call was made, or no token count was reported"
+  },
+  "source_manifest": [
+    {
+      "metric_id": "churn_rate",
+      "display_name": "Churn Rate (%)",
+      "source_system": "CRM export (daily rollup)",
+      "source_basis": "declared",
+      "grain": "monthly",
+      "as_of_period": "2024-04",
+      "first_period": "2024-01",
+      "points": 4,
+      "interpolated_points": 0,
+      "confidence": 1.0
+    },
+    {
+      "metric_id": "net_revenue_retention",
+      "display_name": "Net Revenue Retention (%)",
+      "source_system": "ERP export (monthly)",
+      "source_basis": "declared",
+      "grain": "monthly",
+      "as_of_period": "2024-04",
+      "first_period": "2024-01",
+      "points": 4,
+      "interpolated_points": 0,
+      "confidence": 1.0
+    },
+    {
+      "metric_id": "gross_margin",
+      "display_name": "Gross Margin (%)",
+      "source_system": "ERP export (monthly)",
+      "source_basis": "declared",
+      "grain": "monthly",
+      "as_of_period": "2024-04",
+      "first_period": "2024-01",
+      "points": 4,
+      "interpolated_points": 0,
+      "confidence": 1.0
+    }
+  ],
+  "persona": "executive"
 }

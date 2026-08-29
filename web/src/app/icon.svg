@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="5" fill="#1a1a18"/>
+  <!-- A rising series that breaks its band: the product in one mark. -->
+  <path d="M5 22 L11 19 L17 20 L23 10 L27 7" fill="none" stroke="#f4f3ee"
+        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="27" cy="7" r="3.2" fill="#c2603f"/>
+</svg>
