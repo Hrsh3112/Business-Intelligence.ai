@@ -97,5 +97,8 @@ async def analyze_upload(
             "source_manifest": build_source_manifest(
                 result.company_input, form_metadata, upload_filename=file.filename
             ),
+            # Echo only. Persona selects what the reader is shown; it does not
+            # reach C1 or C3 and does not change a single computed value.
+            "persona": form_metadata.persona,
         }
     )

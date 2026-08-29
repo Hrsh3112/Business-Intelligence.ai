@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FormMetadata, SectorId } from "@/lib/api";
+import type { FormMetadata, Persona, SectorId } from "@/lib/api";
 import { previewRevenueBand } from "@/lib/revenueBand";
 
 interface InputFormProps {
@@ -26,6 +26,7 @@ export function InputForm({ onSubmit, isSubmitting }: InputFormProps) {
   const [annualRevenue, setAnnualRevenue] = useState("");
   const [region, setRegion] = useState("");
   const [sourceSystem, setSourceSystem] = useState("");
+  const [persona, setPersona] = useState<Persona>("executive");
   const [file, setFile] = useState<File | null>(null);
 
   const revenueNumber = annualRevenue.trim() === "" ? null : Number(annualRevenue);
@@ -45,6 +46,7 @@ export function InputForm({ onSubmit, isSubmitting }: InputFormProps) {
       // Left null rather than defaulted: the backend then records the source
       // as inferred-from-filename instead of claiming the user declared it.
       source_system: sourceSystem.trim() === "" ? null : sourceSystem.trim(),
+      persona,
     });
   };
 
@@ -108,6 +110,20 @@ export function InputForm({ onSubmit, isSubmitting }: InputFormProps) {
           />
         </Field>
       </div>
+
+      <Field
+        label="Report for"
+        hint="Selects what you're shown, not what's computed. Switchable on the results page."
+      >
+        <select
+          className="w-full rounded-sm border border-rule bg-white px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          value={persona}
+          onChange={(e) => setPersona(e.target.value as Persona)}
+        >
+          <option value="executive">Executive — situation and actions</option>
+          <option value="analyst">Analyst — full statistical detail</option>
+        </select>
+      </Field>
 
       <Field
         label="Source system (optional)"

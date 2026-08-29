@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ApiResponse } from "@/lib/api";
+import type { ApiResponse, Persona } from "@/lib/api";
 import { HealthScore } from "./HealthScore";
 import { DegradedBanner } from "./DegradedBanner";
 import { Narrative } from "./Narrative";
@@ -16,6 +16,7 @@ import { TelemetryChip } from "./TelemetryChip";
 import { MethodPanel } from "./MethodPanel";
 import { FeedbackControl } from "./FeedbackControl";
 import { SourceManifestPanel } from "./SourceManifestPanel";
+import { PersonaSwitcher, EntitlementNote } from "./PersonaSwitcher";
 
 interface ResultsViewProps {
   response: ApiResponse;
@@ -29,6 +30,9 @@ interface ResultsViewProps {
  */
 export function ResultsView({ response, onReset }: ResultsViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  // Seeded from what the submission asked for, then switchable in place — the
+  // two views are of one computed report, and toggling shows exactly that.
+  const [persona, setPersona] = useState<Persona>(response.persona);
 
   if (!response.result) {
     // status: "failed" — nothing to render. NO_USABLE_METRICS is not a system
@@ -103,6 +107,7 @@ export function ResultsView({ response, onReset }: ResultsViewProps) {
   return (
     <div className="mx-auto max-w-[880px] space-y-10 py-8">
       <header className="space-y-4">
+        <PersonaSwitcher persona={persona} onChange={setPersona} />
         <HealthScore score={anomaly_report.overall_health_score ?? null} />
         {metadata.degraded && <DegradedBanner degradedReason={metadata.degraded_reason} />}
         {/* metadata carries a server-side default, so it is not guaranteed
@@ -144,6 +149,7 @@ export function ResultsView({ response, onReset }: ResultsViewProps) {
                   onHighlight={setHighlightedId}
                   jobId={response.job_id}
                   source={sourceByMetricId.get(anomaly.metric_id)}
+                  persona={persona}
                 />
                 {prescriptionsByAnomalyId.has(anomaly.anomaly_id) && (
                   <div className="mt-2 rounded-sm border border-rule border-t-0 p-5">
@@ -172,6 +178,7 @@ export function ResultsView({ response, onReset }: ResultsViewProps) {
           both after reading them. */}
       <SourceManifestPanel manifest={response.source_manifest} />
       <MethodPanel response={response} />
+      {persona === "executive" && <EntitlementNote />}
     </div>
   );
 }

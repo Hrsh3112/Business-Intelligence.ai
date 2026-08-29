@@ -129,3 +129,36 @@ class TestEdges:
         body = _upload(fractions).json()
         assert body["error"] == "NO_USABLE_METRICS"
         assert body["source_manifest"] == []
+
+
+class TestPersona:
+    """Persona selects what a reader is shown. It must never reach C1 or C3,
+    and must never change a computed value."""
+
+    def test_persona_is_echoed_back(self):
+        body = _upload(metadata=_meta(persona="analyst")).json()
+        assert body["persona"] == "analyst"
+
+    def test_defaults_to_executive_when_not_declared(self):
+        assert _upload().json()["persona"] == "executive"
+
+    def test_direct_analyze_has_no_form_metadata_so_defaults_apply(self):
+        company_input, _ = FIXTURE_BUILDERS["critical"]()
+        response = client.post("/analyze", json=company_input.model_dump(mode="json", by_alias=True))
+        assert response.json()["persona"] == "executive"
+
+    def test_persona_changes_nothing_that_was_computed(self):
+        # The guarantee that makes persona safe: same submission, same numbers.
+        # Only the rendering layer differs.
+        exec_body = _upload(metadata=_meta(persona="executive")).json()
+        analyst_body = _upload(metadata=_meta(persona="analyst")).json()
+
+        def signature(body):
+            report = body["result"]["anomaly_report"]
+            return (
+                report["overall_health_score"],
+                [(a["anomaly_id"], a["severity_score"], a["deviation"]["z_score"]) for a in report["anomalies"]],
+                [(m["metric_id"], m["points"], m["grain"]) for m in body["source_manifest"]],
+            )
+
+        assert signature(exec_body) == signature(analyst_body)

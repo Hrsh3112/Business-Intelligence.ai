@@ -1,5 +1,5 @@
 {
-  "job_id": "07a2655d-0bd1-4a79-a66a-f8101b901828",
+  "job_id": "75dd3a96-0b1c-4caf-afbb-f6a2d382e1df",
   "status": "refused",
   "result": {
     "$schema": "enriched_report_v1",
@@ -104,5 +104,6 @@
       "interpolated_points": 0,
       "confidence": 1.0
     }
-  ]
+  ],
+  "persona": "executive"
 }

@@ -103,6 +103,27 @@ class ValidateResponse(BaseModel):
     ready: bool = False
 
 
+class Persona(str, Enum):
+    """Who is reading this report (Stage 5; critique P0 #1, P1 #8).
+
+    ROUTING NOTE — read before extending this. Persona does NOT reach C3, and
+    cannot today. C3's narrative is generated from an AnomalyReport, and for a
+    persona to influence that prose it would have to travel either on
+    `CompanyInput` (api/models/shared.py — the cross-team schema, which C2 does
+    not modify) or as a second argument to `run_pipeline()` (which by contract
+    takes a CompanyInput and nothing else). Both are cross-team decisions, not
+    C2's to make unilaterally.
+
+    So persona is currently a C2 concern end to end: it selects WHAT each
+    reader is shown, not what the model writes. The narrative prose is
+    identical across personas, and the UI says so rather than implying
+    tailoring we did not do.
+    """
+
+    EXECUTIVE = "executive"
+    ANALYST = "analyst"
+
+
 class FormMetadata(BaseModel):
     """Company-level metadata accompanying a file upload or manual entry
     (Phase2-Plan T2.5/T2.6). Distinct from CompanyMetadata (models/shared.py):
@@ -120,6 +141,7 @@ class FormMetadata(BaseModel):
     # --- Provenance (Stage 4). Both optional: a submission that declares
     # nothing still gets a manifest, just with the source left unknown rather
     # than guessed. ---
+    persona: Persona = Persona.EXECUTIVE
     source_system: Optional[str] = Field(default=None, max_length=120)
     # Per-metric override, e.g. {"churn_rate": "CRM export (daily)"}. This is
     # how one upload can honestly carry two systems at two cadences without
@@ -286,3 +308,7 @@ class ApiResponse(BaseModel):
     # Empty when the pipeline never ran (no input to describe), never null-as-
     # unknown — an empty list and a missing field mean different things here.
     source_manifest: list[MetricSource] = []
+    # Echoed back so the rendering layer and the static demo snapshots agree on
+    # who this report was assembled for. Defaults to EXECUTIVE on POST /analyze,
+    # which carries no form metadata to declare one.
+    persona: Persona = Persona.EXECUTIVE

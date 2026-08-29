@@ -19,6 +19,7 @@ export type FeedbackResponse = components["schemas"]["FeedbackResponse"];
 export type FeedbackVerdict = components["schemas"]["FeedbackVerdict"];
 export type FeedbackCorrection = components["schemas"]["FeedbackCorrection"];
 export type MetricSource = components["schemas"]["MetricSource"];
+export type Persona = components["schemas"]["Persona"];
 
 // FormMetadata is invisible to the OpenAPI schema — the backend receives it
 // as an opaque JSON string inside a multipart field (see
@@ -37,6 +38,8 @@ export interface FormMetadata {
    *  gets a manifest, with the source left unknown rather than guessed. */
   source_system?: string | null;
   metric_sources?: Record<string, string> | null;
+  /** Who the report is for. Selects what is shown, never what is computed. */
+  persona?: Persona;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";

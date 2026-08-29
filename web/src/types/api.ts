@@ -239,6 +239,8 @@ export interface components {
              * @default []
              */
             source_manifest: components["schemas"]["MetricSource"][];
+            /** @default executive */
+            persona: components["schemas"]["Persona"];
         };
         /** Body_analyze_upload_analyze_upload_post */
         Body_analyze_upload_analyze_upload_post: {
@@ -678,6 +680,25 @@ export interface components {
          * @enum {string}
          */
         ParseWarningCode: "UNKNOWN_METRIC" | "UNIT_SCALE_SUSPECT" | "OUT_OF_RANGE" | "SHORT_SERIES" | "INTERPOLATED_POINTS" | "SECTOR_MISMATCH" | "AMBIGUOUS_MAPPING" | "SCHEMA_VALIDATION_ERROR" | "DATE_TRUNCATED" | "TWO_DIGIT_YEAR_FUTURE" | "AMBIGUOUS_NUMBER_FORMAT" | "MIXED_GRANULARITY" | "AMBIGUOUS_SHAPE" | "SERIES_TRIMMED" | "INTERPOLATION_HEAVY" | "CONSTANT_SERIES" | "SPARSE_SERIES" | "DUPLICATE_PERIOD" | "REFUSAL_LIKELY";
+        /**
+         * Persona
+         * @description Who is reading this report (Stage 5; critique P0 #1, P1 #8).
+         *
+         *     ROUTING NOTE — read before extending this. Persona does NOT reach C3, and
+         *     cannot today. C3's narrative is generated from an AnomalyReport, and for a
+         *     persona to influence that prose it would have to travel either on
+         *     `CompanyInput` (api/models/shared.py — the cross-team schema, which C2 does
+         *     not modify) or as a second argument to `run_pipeline()` (which by contract
+         *     takes a CompanyInput and nothing else). Both are cross-team decisions, not
+         *     C2's to make unilaterally.
+         *
+         *     So persona is currently a C2 concern end to end: it selects WHAT each
+         *     reader is shown, not what the model writes. The narrative prose is
+         *     identical across personas, and the UI says so rather than implying
+         *     tailoring we did not do.
+         * @enum {string}
+         */
+        Persona: "executive" | "analyst";
         /** Prescription */
         Prescription: {
             /** Anomaly Id */

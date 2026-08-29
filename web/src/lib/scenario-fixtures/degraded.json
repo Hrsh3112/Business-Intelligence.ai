@@ -1,5 +1,5 @@
 {
-  "job_id": "a203d85d-9ad8-44ab-90f8-bab1ae383146",
+  "job_id": "29d4e43a-8cf9-454b-bee9-3dc51f3b4fef",
   "status": "complete",
   "result": {
     "$schema": "enriched_report_v1",
@@ -345,5 +345,6 @@
       "interpolated_points": 0,
       "confidence": 1.0
     }
-  ]
+  ],
+  "persona": "executive"
 }
