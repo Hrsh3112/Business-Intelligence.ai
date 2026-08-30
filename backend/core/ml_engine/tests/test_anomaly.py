@@ -233,3 +233,163 @@ def test_filtered_metrics_channel():
         assert fm["metric_id"] == "monthly_recurring_revenue_growth"
         assert "L2" in fm["layer"] or "persistence" in fm["reason"].lower()
 
+
+def test_contribution_pct_sums_to_100():
+    """Assert sum(contribution_pct) ≈ 100.0 when multiple anomalies exist."""
+    from ml_engine.models.input_schema import CompanyInput, CompanyMetadata, PeriodType, ReportingPeriod, SectorId
+    from ml_engine.pipeline import analyze_company
+
+    failing_input = CompanyInput(
+        company_id="comp_saas_contrib_test",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Contrib Test Corp",
+            employee_count=100,
+            annual_revenue=15_000_000.0,
+            revenue_band=RevenueBand.TEN_TO_100M,
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-01-01", end="2026-06-30"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="monthly_recurring_revenue_growth",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=8.0),
+                    TimeSeriesPoint(period="2026-02", value=5.0),
+                    TimeSeriesPoint(period="2026-03", value=2.0),
+                    TimeSeriesPoint(period="2026-04", value=-1.0),
+                    TimeSeriesPoint(period="2026-05", value=-3.0),
+                    TimeSeriesPoint(period="2026-06", value=-6.0),
+                ],
+            ),
+            MetricInput(
+                metric_id="churn_rate",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=2.1),
+                    TimeSeriesPoint(period="2026-02", value=2.5),
+                    TimeSeriesPoint(period="2026-03", value=3.2),
+                    TimeSeriesPoint(period="2026-04", value=4.0),
+                    TimeSeriesPoint(period="2026-05", value=4.8),
+                    TimeSeriesPoint(period="2026-06", value=5.5),
+                ],
+            ),
+        ],
+    )
+
+    report = analyze_company(failing_input)
+    assert len(report.anomalies) >= 2
+    contribs = [a.contribution_pct for a in report.anomalies if a.contribution_pct is not None]
+    assert len(contribs) == len(report.anomalies)
+    assert pytest.approx(sum(contribs), abs=1.0) == 100.0
+
+
+def test_contribution_pct_null_when_healthy():
+    """Assert contribution_pct is None when no anomalies exist / fully healthy report."""
+    from ml_engine.models.input_schema import CompanyInput, CompanyMetadata, PeriodType, ReportingPeriod, SectorId
+    from ml_engine.pipeline import analyze_company
+
+    healthy_input = CompanyInput(
+        company_id="comp_saas_healthy_test",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Healthy Test Corp",
+            employee_count=100,
+            revenue_band=RevenueBand.TEN_TO_100M,
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-01-01", end="2026-06-30"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="monthly_recurring_revenue_growth",
+                values=[
+                    TimeSeriesPoint(period=f"2026-0{i+1}", value=9.0) for i in range(6)
+                ],
+            ),
+        ],
+    )
+
+    report = analyze_company(healthy_input)
+    assert len(report.anomalies) == 0
+    for a in report.anomalies:
+        assert a.contribution_pct is None
+
+
+def test_contribution_pct_single_anomaly():
+    """Assert single anomaly gets contribution_pct = 100.0."""
+    from ml_engine.models.input_schema import CompanyInput, CompanyMetadata, PeriodType, ReportingPeriod, SectorId
+    from ml_engine.pipeline import analyze_company
+
+    single_anom_input = CompanyInput(
+        company_id="comp_saas_single_test",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Single Anom Corp",
+            employee_count=100,
+            revenue_band=RevenueBand.TEN_TO_100M,
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-01-01", end="2026-06-30"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="churn_rate",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=2.1),
+                    TimeSeriesPoint(period="2026-02", value=2.5),
+                    TimeSeriesPoint(period="2026-03", value=3.2),
+                    TimeSeriesPoint(period="2026-04", value=4.0),
+                    TimeSeriesPoint(period="2026-05", value=4.8),
+                    TimeSeriesPoint(period="2026-06", value=6.5),
+                ],
+            ),
+        ],
+    )
+
+    report = analyze_company(single_anom_input)
+    assert len(report.anomalies) == 1
+    assert report.anomalies[0].contribution_pct == 100.0
+
+
+def test_source_fields_passthrough():
+    """Submit MetricInput with source_system and data_as_of — assert AnomalyItem carries them."""
+    from ml_engine.models.input_schema import CompanyInput, CompanyMetadata, PeriodType, ReportingPeriod, SectorId
+    from ml_engine.pipeline import analyze_company
+
+    source_input = CompanyInput(
+        company_id="comp_saas_source_test",
+        sector_id=SectorId.TECH_SAAS,
+        company_metadata=CompanyMetadata(
+            name="Source Test Corp",
+            employee_count=100,
+            revenue_band=RevenueBand.TEN_TO_100M,
+        ),
+        reporting_period=ReportingPeriod(
+            type=PeriodType.MONTHLY, start="2026-01-01", end="2026-06-30"
+        ),
+        metrics=[
+            MetricInput(
+                metric_id="churn_rate",
+                source_system="CRM",
+                grain="daily",
+                data_as_of="2026-08-28",
+                values=[
+                    TimeSeriesPoint(period="2026-01", value=2.1),
+                    TimeSeriesPoint(period="2026-02", value=2.5),
+                    TimeSeriesPoint(period="2026-03", value=3.2),
+                    TimeSeriesPoint(period="2026-04", value=4.0),
+                    TimeSeriesPoint(period="2026-05", value=4.8),
+                    TimeSeriesPoint(period="2026-06", value=6.5),
+                ],
+            ),
+        ],
+    )
+
+    report = analyze_company(source_input)
+    assert len(report.anomalies) >= 1
+    anom = report.anomalies[0]
+    assert anom.source_system == "CRM"
+    assert anom.data_as_of == "2026-08-28"
+
+

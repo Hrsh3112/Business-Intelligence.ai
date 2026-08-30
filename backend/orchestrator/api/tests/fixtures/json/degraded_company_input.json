@@ -60,7 +60,10 @@
           "interpolated": false
         }
       ],
-      "confidence": 1.0
+      "confidence": 1.0,
+      "source_system": null,
+      "grain": null,
+      "data_as_of": null
     },
     {
       "metric_id": "net_revenue_retention",
@@ -107,7 +110,10 @@
           "interpolated": false
         }
       ],
-      "confidence": 1.0
+      "confidence": 1.0,
+      "source_system": null,
+      "grain": null,
+      "data_as_of": null
     },
     {
       "metric_id": "gross_margin",
@@ -154,8 +160,12 @@
           "interpolated": false
         }
       ],
-      "confidence": 1.0
+      "confidence": 1.0,
+      "source_system": null,
+      "grain": null,
+      "data_as_of": null
     }
   ],
-  "raw_text_context": null
+  "raw_text_context": null,
+  "persona": null
 }

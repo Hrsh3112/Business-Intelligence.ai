@@ -60,6 +60,25 @@ export function SourceManifestPanel({ manifest }: SourceManifestPanelProps) {
             connected to.
           </p>
 
+          {/* Source Legend */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-rule bg-white/40 p-2.5 text-xs text-ink-muted">
+            <span className="font-medium text-ink">Source Legend:</span>
+            {Array.from(distinctSources).map((src) => (
+              <span key={src} className="rounded-xs border border-rule bg-white px-2 py-0.5 font-medium text-ink">
+                {src}
+              </span>
+            ))}
+            <span className="text-ink-muted">·</span>
+            <span>{manifest.length} metrics monitored across {distinctGrains.size} time grains</span>
+          </div>
+
+          {/* Grain alignment notice if heterogeneous grains present */}
+          {distinctGrains.size > 1 && (
+            <div className="mt-2.5 rounded-sm border border-amber-200 bg-amber-50/70 p-2.5 text-xs text-amber-900">
+              <span className="font-medium">Grain Alignment Note:</span> Multi-source ingestion reconciled daily and monthly cadences. Daily series are harmonized to monthly calendar intervals for unified cross-metric attribution.
+            </div>
+          )}
+
           <div className="mt-3 overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
               <thead>

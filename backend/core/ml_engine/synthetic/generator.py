@@ -3,7 +3,7 @@
 Generates calibrated 'ideal company' baseline distributions customized by sector and size cohort.
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import numpy as np
 from ..config.schema import (
     DistributionConfig,
@@ -13,6 +13,7 @@ from ..config.schema import (
 )
 from ..models.input_schema import RevenueBand, SectorId
 from .distributions import sample_distribution
+from .ts_baseline import fit_ets_baseline
 
 
 class CalibratedMetricBaseline:
@@ -24,7 +25,8 @@ class CalibratedMetricBaseline:
         calibrated_mean: float,
         calibrated_std: float,
         lower_bound: Optional[float] = None,
-        upper_bound: Optional[float] = None
+        upper_bound: Optional[float] = None,
+        baseline_source: str = "sector_parametric",
     ):
         self.metric_def = metric_def
         self.metric_id = metric_def.metric_id
@@ -38,6 +40,7 @@ class CalibratedMetricBaseline:
         self.std = max(calibrated_std, 1e-4)
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
+        self.baseline_source = baseline_source
 
     def sample(self, n_samples: int = 1, seed: Optional[int] = None) -> np.ndarray:
         """Sample synthetic ideal observations."""
@@ -64,7 +67,9 @@ class SyntheticProfileGenerator:
 
     def get_calibrated_profile(
         self,
-        revenue_band: RevenueBand
+        revenue_band: RevenueBand,
+        metric_inputs_map: Optional[Dict[str, Any]] = None,
+        enable_ets_baseline: bool = False,
     ) -> Dict[str, CalibratedMetricBaseline]:
         """Compute size-adjusted baseline expectations for each metric in the sector."""
         profile = {}
@@ -72,14 +77,32 @@ class SyntheticProfileGenerator:
             base_params = metric_def.distribution.params
             mean = base_params.mean
             std = base_params.std
+            source = "sector_parametric"
 
-            # Apply size scaling adjustment if present
-            band_str = revenue_band.value if isinstance(revenue_band, RevenueBand) else str(revenue_band)
-            for adj in metric_def.size_scaling.revenue_bands:
-                if adj.band == band_str:
-                    mean += adj.mean_adjustment
-                    std = max(std + adj.std_adjustment, 0.01)
-                    break
+            # Check for personalised ETS baseline if enabled and sufficient historical data exists (>= 6 prior history periods)
+            if enable_ets_baseline and metric_inputs_map and metric_id in metric_inputs_map:
+                metric_in = metric_inputs_map[metric_id]
+                values = getattr(metric_in, "values", None)
+                if values and len(values) >= 7:
+                    try:
+                        sorted_points = sorted(values, key=lambda x: getattr(x, "period", ""))
+                        observed_history = [p.value for p in sorted_points[:-1]]
+                        if len(observed_history) >= 6:
+                            ets_mean, ets_std = fit_ets_baseline(observed_history)
+                            mean = ets_mean
+                            std = max(ets_std, base_params.std)
+                            source = "ets_personalised"
+                    except Exception:
+                        pass
+
+            # Apply size scaling adjustment if using sector parametric
+            if source == "sector_parametric":
+                band_str = revenue_band.value if isinstance(revenue_band, RevenueBand) else str(revenue_band)
+                for adj in metric_def.size_scaling.revenue_bands:
+                    if adj.band == band_str:
+                        mean += adj.mean_adjustment
+                        std = max(std + adj.std_adjustment, 0.01)
+                        break
 
             profile[metric_id] = CalibratedMetricBaseline(
                 metric_def=metric_def,
@@ -87,6 +110,7 @@ class SyntheticProfileGenerator:
                 calibrated_std=std,
                 lower_bound=base_params.lower_bound,
                 upper_bound=base_params.upper_bound,
+                baseline_source=source,
             )
         return profile
 

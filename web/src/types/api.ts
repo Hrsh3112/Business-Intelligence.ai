@@ -130,6 +130,8 @@ export interface components {
              * @enum {string}
              */
             effort: "HIGH" | "MEDIUM" | "LOW";
+            /** Evidence Anomaly Ids */
+            evidence_anomaly_ids?: string[];
         };
         /** Adjustment */
         Adjustment: {
@@ -199,6 +201,16 @@ export interface components {
             context_tags: string[];
             /** Natural Language Summary */
             natural_language_summary: string;
+            /** Contribution Pct */
+            contribution_pct?: number | null;
+            /** Source System */
+            source_system?: string | null;
+            /** Data As Of */
+            data_as_of?: string | null;
+            /** Candidate Explanations */
+            candidate_explanations?: string[];
+            /** Driver Rank */
+            driver_rank?: number;
         } & {
             [key: string]: unknown;
         };
@@ -735,6 +747,8 @@ export interface components {
             prioritized_actions: components["schemas"]["ActionItem"][];
             /** Positives */
             positives: string[];
+            /** Evidence Citations */
+            evidence_citations?: string[];
         };
         /** ParseWarning */
         ParseWarning: {

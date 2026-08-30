@@ -3,7 +3,7 @@ depends on these, so they can change freely without cross-team coordination.
 """
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -194,6 +194,11 @@ class MetricCatalogEntry(BaseModel):
     # so a caller can format a CSV that will actually resolve, rather than
     # discovering the alias table by trial and error.
     accepted_aliases: list[str] = []
+    description: Optional[str] = None
+    calculation_formula: Optional[str] = None
+    drivers: list[str] = []
+    lineage: Optional[dict[str, Any]] = None
+    access_restrictions: Optional[dict[str, Any]] = None
 
 
 class MetricCatalogResponse(BaseModel):
@@ -203,6 +208,9 @@ class MetricCatalogResponse(BaseModel):
     # Echoed from config rather than restated, so the periods the API enforces
     # and the periods it advertises are always the same numbers.
     min_periods: dict[str, dict[str, int]] = {}
+    correlation_matrix: Optional[dict[str, dict[str, float]]] = None
+    access_entitlements: Optional[dict[str, Any]] = None
+    lineage_manifest_spec: Optional[dict[str, Any]] = None
 
 
 class MetricSource(BaseModel):
@@ -264,6 +272,8 @@ class FeedbackRequest(BaseModel):
     job_id: str
     target: Literal["report", "narrative", "anomaly"] = "report"
     anomaly_id: Optional[str] = None  # required in spirit when target="anomaly"
+    metric_id: Optional[str] = None
+    sector_id: Optional[str] = None
     verdict: FeedbackVerdict
     correction: Optional[FeedbackCorrection] = None
     # Capped: this is written to disk unauthenticated, so an uncapped field is

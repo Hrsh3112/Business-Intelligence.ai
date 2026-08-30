@@ -222,6 +222,13 @@ def build_critical() -> tuple[CompanyInput, AnomalyReport]:
         correlated_anomalies=["anom_critical_nrr"],
         noise_confidence=0.93,
         context_tags=["churn_related", "retention_leak", "customer_attrition"],
+        driver_rank=1,
+        contribution_pct=63.9,
+        candidate_explanations=[],
+        decision_urgency="stable_bad",
+        baseline_source="sector_parametric",
+        source_system="CRM export (daily rollup)",
+        data_as_of="2024-08-31",
         natural_language_summary=(
             "Churn rate rose from 2.1% to 5.2% over the past 8 months, consistently exceeding "
             "the expected baseline of 2.0% for a company of this profile."
@@ -253,6 +260,13 @@ def build_critical() -> tuple[CompanyInput, AnomalyReport]:
         correlated_anomalies=["anom_critical_churn_rate"],
         noise_confidence=0.88,
         context_tags=["nrr_drop", "expansion_revenue", "account_health"],
+        driver_rank=0,
+        contribution_pct=36.1,
+        candidate_explanations=[],
+        decision_urgency="stable_bad",
+        baseline_source="sector_parametric",
+        source_system="ERP export (monthly)",
+        data_as_of="2024-08-31",
         natural_language_summary=(
             "Net revenue retention fell from 106% to 88% over the past 8 months, below the "
             "expected baseline of 100% for a company of this profile, alongside a concurrent "

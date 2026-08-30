@@ -36,6 +36,7 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .eslintcache
+docs/
 
 # Package manager files & debug logs
 .pnp

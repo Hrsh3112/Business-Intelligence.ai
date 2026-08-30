@@ -7,6 +7,8 @@ interface FeedbackControlProps {
   jobId: string;
   target?: FeedbackRequest["target"];
   anomalyId?: string;
+  metricId?: string;
+  sectorId?: string;
   /** Corrections offered after a thumbs-down. Anomaly cards get the noise and
    *  severity options; the narrative gets the root-cause one. */
   corrections?: { value: FeedbackCorrection; label: string }[];
@@ -41,7 +43,14 @@ export { ANOMALY_CORRECTIONS, NARRATIVE_CORRECTIONS };
  * haven't built is the one thing that would turn an honest answer to Req 7
  * into a claim we can't defend.
  */
-export function FeedbackControl({ jobId, target = "report", anomalyId, corrections }: FeedbackControlProps) {
+export function FeedbackControl({
+  jobId,
+  target = "report",
+  anomalyId,
+  metricId,
+  sectorId,
+  corrections,
+}: FeedbackControlProps) {
   const [state, setState] = useState<State>("idle");
   const [showCorrections, setShowCorrections] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -55,9 +64,11 @@ export function FeedbackControl({ jobId, target = "report", anomalyId, correctio
         job_id: jobId,
         target,
         anomaly_id: anomalyId ?? null,
+        metric_id: metricId ?? null,
+        sector_id: sectorId ?? null,
         verdict,
         correction: correction ?? null,
-      });
+      } as any);
       setState(response.recorded ? "done" : "failed");
       setMessage(response.message);
     } catch {

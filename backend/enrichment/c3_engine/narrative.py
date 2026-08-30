@@ -115,8 +115,26 @@ def generate_narrative(
                 "You are a Business Intelligence Analyst. Generate a comprehensive business narrative analyzing company performance anomalies."
             )
 
+        low_conf_anomalies = [
+            a for a in anomaly_report.anomalies
+            if getattr(a, "noise_confidence", 1.0) < 0.5 and getattr(a, "candidate_explanations", [])
+        ]
+        low_conf_instruction = ""
+        if low_conf_anomalies:
+            low_conf_block = "\n".join([
+                f"- {a.metric_display_name} ({a.anomaly_id}): competing explanations: {'; '.join(a.candidate_explanations)}"
+                for a in low_conf_anomalies
+            ])
+            low_conf_instruction = f"""
+IMPORTANT: The following metrics have low signal confidence (noise_confidence < 0.5).
+For these metrics, DO NOT state a single definitive root cause.
+Instead, present the competing explanations as open hypotheses and state that more data is needed to resolve them:
+{low_conf_block}
+"""
+
         prompt = f"""
 {role_instruction}
+{low_conf_instruction}
 
 --- COMPANY PROFILE ---
 {profile_summary}
@@ -141,7 +159,13 @@ Please analyze the above context and output a JSON object containing:
    - description: Detailed explanation.
    - impact: "HIGH", "MEDIUM", or "LOW"
    - effort: "HIGH", "MEDIUM", or "LOW"
+   - evidence_anomaly_ids: list of anomaly_id values from the provided anomaly list that directly justify this action. Do not invent IDs. Use only IDs present in the anomaly data.
 4. positives: A list of positive performance highlights/strengths from the highlights.
+5. evidence_citations: list of anomaly_ids cited across the narrative. Do not invent IDs. Use only IDs present in the anomaly data.
+
+For each action in prioritized_actions, populate evidence_anomaly_ids with a list of
+anomaly_id values from the provided anomaly list that directly justify this action.
+Do not invent IDs. Use only IDs present in the anomaly data.
 
 Output MUST conform strictly to the required schema. No pre-text or post-text outside the JSON object.
 """
@@ -160,6 +184,17 @@ Output MUST conform strictly to the required schema. No pre-text or post-text ou
             narrative_obj = response.parsed
         else:
             narrative_obj = Narrative.model_validate_json(response.text)
+
+        # Sanitize evidence citations and evidence_anomaly_ids
+        valid_anomaly_ids = {a.anomaly_id for a in anomaly_report.anomalies}
+        if narrative_obj:
+            all_cited = set()
+            for act in narrative_obj.prioritized_actions:
+                act.evidence_anomaly_ids = [aid for aid in act.evidence_anomaly_ids if aid in valid_anomaly_ids]
+                all_cited.update(act.evidence_anomaly_ids)
+            narrative_obj.evidence_citations = [aid for aid in narrative_obj.evidence_citations if aid in valid_anomaly_ids]
+            if not narrative_obj.evidence_citations and all_cited:
+                narrative_obj.evidence_citations = sorted(list(all_cited))
         
         token_metadata = {}
         if hasattr(response, "usage_metadata") and response.usage_metadata is not None:

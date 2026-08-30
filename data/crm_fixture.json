@@ -1,0 +1,108 @@
+{
+  "source_system": "CRM",
+  "refresh_cadence": "daily",
+  "grain": "daily",
+  "data_as_of": "2026-08-28",
+  "metrics": {
+    "churn_rate": [
+      {
+        "period": "2026-01-05",
+        "value": 2.0
+      },
+      {
+        "period": "2026-01-20",
+        "value": 2.2
+      },
+      {
+        "period": "2026-02-05",
+        "value": 2.5
+      },
+      {
+        "period": "2026-02-20",
+        "value": 2.7
+      },
+      {
+        "period": "2026-03-05",
+        "value": 3.1
+      },
+      {
+        "period": "2026-03-20",
+        "value": 3.3
+      },
+      {
+        "period": "2026-04-05",
+        "value": 3.8
+      },
+      {
+        "period": "2026-04-20",
+        "value": 4.0
+      },
+      {
+        "period": "2026-05-05",
+        "value": 4.5
+      },
+      {
+        "period": "2026-05-20",
+        "value": 4.7
+      },
+      {
+        "period": "2026-06-05",
+        "value": 5.2
+      },
+      {
+        "period": "2026-06-20",
+        "value": 5.6
+      }
+    ],
+    "customer_acquisition_cost": [
+      {
+        "period": "2026-01-05",
+        "value": 440.0
+      },
+      {
+        "period": "2026-01-20",
+        "value": 460.0
+      },
+      {
+        "period": "2026-02-05",
+        "value": 480.0
+      },
+      {
+        "period": "2026-02-20",
+        "value": 500.0
+      },
+      {
+        "period": "2026-03-05",
+        "value": 520.0
+      },
+      {
+        "period": "2026-03-20",
+        "value": 540.0
+      },
+      {
+        "period": "2026-04-05",
+        "value": 570.0
+      },
+      {
+        "period": "2026-04-20",
+        "value": 590.0
+      },
+      {
+        "period": "2026-05-05",
+        "value": 610.0
+      },
+      {
+        "period": "2026-05-20",
+        "value": 630.0
+      },
+      {
+        "period": "2026-06-05",
+        "value": 660.0
+      },
+      {
+        "period": "2026-06-20",
+        "value": 680.0
+      }
+    ]
+  }
+}

@@ -54,6 +54,8 @@ def build_source_manifest(
         # is weaker evidence than the last, which is what source_basis records.
         if entry.metric_id in per_metric:
             source, basis = per_metric[entry.metric_id], "declared"
+        elif getattr(entry, "source_system", None):
+            source, basis = entry.source_system, "declared"
         elif declared_default:
             source, basis = declared_default, "declared"
         elif upload_filename:

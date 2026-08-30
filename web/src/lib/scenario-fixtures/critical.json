@@ -1,5 +1,5 @@
 {
-  "job_id": "1a9322c5-2083-4286-8971-ef9270e4bfac",
+  "job_id": "23fc7518-e34b-46da-b0b4-d51d54393508",
   "status": "complete",
   "result": {
     "$schema": "enriched_report_v1",
@@ -100,7 +100,15 @@
             "retention_leak",
             "customer_attrition"
           ],
-          "natural_language_summary": "Churn rate rose from 2.1% to 5.2% over the past 8 months, consistently exceeding the expected baseline of 2.0% for a company of this profile."
+          "natural_language_summary": "Churn rate rose from 2.1% to 5.2% over the past 8 months, consistently exceeding the expected baseline of 2.0% for a company of this profile.",
+          "driver_rank": 1,
+          "candidate_explanations": [],
+          "contribution_pct": 63.9,
+          "source_system": "CRM export (daily rollup)",
+          "data_as_of": "2024-08-31",
+          "baseline_source": "sector_parametric",
+          "decision_urgency": "stable_bad",
+          "granger_tested": false
         },
         {
           "anomaly_id": "anom_critical_nrr",
@@ -182,7 +190,15 @@
             "expansion_revenue",
             "account_health"
           ],
-          "natural_language_summary": "Net revenue retention fell from 106% to 88% over the past 8 months, below the expected baseline of 100% for a company of this profile, alongside a concurrent rise in churn."
+          "natural_language_summary": "Net revenue retention fell from 106% to 88% over the past 8 months, below the expected baseline of 100% for a company of this profile, alongside a concurrent rise in churn.",
+          "driver_rank": 0,
+          "candidate_explanations": [],
+          "contribution_pct": 36.1,
+          "source_system": "ERP export (monthly)",
+          "data_as_of": "2024-08-31",
+          "baseline_source": "sector_parametric",
+          "decision_urgency": "stable_bad",
+          "granger_tested": false
         }
       ],
       "non_anomalous_highlights": [
@@ -294,18 +310,21 @@
           "title": "Investigate Churn Rate (%)",
           "description": "A SEVERE anomaly was detected in Churn Rate (%). Flagged for review.",
           "impact": "HIGH",
-          "effort": "MEDIUM"
+          "effort": "MEDIUM",
+          "evidence_anomaly_ids": []
         },
         {
           "title": "Investigate Net Revenue Retention (%)",
           "description": "A CRITICAL anomaly was detected in Net Revenue Retention (%). Flagged for review.",
           "impact": "HIGH",
-          "effort": "MEDIUM"
+          "effort": "MEDIUM",
+          "evidence_anomaly_ids": []
         }
       ],
       "positives": [
         "Gross margin remains stable near the expected baseline for this profile."
-      ]
+      ],
+      "evidence_citations": []
     },
     "metadata": {
       "llm_model": "mock-llm-v1",

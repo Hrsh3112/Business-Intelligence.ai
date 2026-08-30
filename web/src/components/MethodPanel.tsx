@@ -12,8 +12,9 @@ interface MethodPanelProps {
 // --accent: globals.css reserves that colour for the confidence/severity
 // signature element, and spending it here would dilute the one hue that
 // carries meaning. Weight and contrast do the job instead.
-const KIND_STYLE = {
+const KIND_STYLE: Record<string, string> = {
   llm: "border-ink font-medium text-ink",
+  ml: "border-accent/40 bg-accent/5 font-medium text-accent",
   default: "border-rule text-ink-muted",
 };
 
@@ -63,7 +64,7 @@ export function MethodPanel({ response }: MethodPanelProps) {
         <span className="text-sm text-ink">
           How we did this —{" "}
           <span className="text-ink-muted">
-            {DETERMINISTIC_STAGE_COUNT} deterministic stages, exactly 1 LLM call
+            {DETERMINISTIC_STAGE_COUNT} analytical stages (ML, statistical & deterministic), exactly 1 LLM call
           </span>
         </span>
         <span aria-hidden className="shrink-0 text-xs text-ink-muted">
@@ -100,7 +101,7 @@ export function MethodPanel({ response }: MethodPanelProps) {
                     <td className="py-1.5 pr-3 whitespace-nowrap text-ink">{method.stage}</td>
                     <td className="py-1.5 pr-3">
                       <span
-                        className={`inline-block rounded-sm border px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase ${KIND_STYLE.default}`}
+                        className={`inline-block rounded-sm border px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase ${KIND_STYLE[method.kind] ?? KIND_STYLE.default}`}
                       >
                         {METHOD_KIND_LABEL[method.kind]}
                       </span>

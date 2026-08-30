@@ -93,10 +93,12 @@ MOCK_NARRATIVE_JSON = '''{
       "title": "Optimize Onboarding",
       "description": "Streamline initial user setup.",
       "impact": "HIGH",
-      "effort": "MEDIUM"
+      "effort": "MEDIUM",
+      "evidence_anomaly_ids": ["A"]
     }
   ],
-  "positives": ["Net revenue retention remains stable."]
+  "positives": ["Net revenue retention remains stable."],
+  "evidence_citations": ["A"]
 }'''
 
 class TestC3Engine(unittest.TestCase):
@@ -115,6 +117,7 @@ class TestC3Engine(unittest.TestCase):
         mock_response.usage_metadata.total_token_count = 15
         
         mock_genai.Client.return_value.chats.create.return_value.send_message.return_value = mock_response
+        mock_genai.Client.return_value.chats.create.return_value.send_message.side_effect = None
 
     def test_refusal_path(self):
         """
@@ -375,6 +378,79 @@ class TestC3Engine(unittest.TestCase):
         analyst_call_args = mock_genai.Client.return_value.chats.create.return_value.send_message.call_args[0][0]
         self.assertIn("Senior Business Intelligence", analyst_call_args)
 
+    @patch.dict("os.environ", {"GEMINI_API_KEY": "test_fake_api_key"})
+    def test_narrative_evidence_ids_are_valid(self):
+        """Assert that every evidence_anomaly_id and citation in the narrative is present in anomaly_report."""
+        anomalies_dict = [make_test_anomaly("A", "churn_rate")]
+        report_dict = make_test_report_dict(anomalies=anomalies_dict, sector_id="TECH_SAAS")
+        enriched = enrich_report(report_dict)
+
+        self.assertIsNotNone(enriched.narrative)
+        valid_ids = {a.anomaly_id for a in enriched.anomaly_report.anomalies}
+        for act in enriched.narrative.prioritized_actions:
+            for aid in act.evidence_anomaly_ids:
+                self.assertIn(aid, valid_ids)
+        for cid in enriched.narrative.evidence_citations:
+            self.assertIn(cid, valid_ids)
+
+    @patch.dict("os.environ", {"GEMINI_API_KEY": "test_fake_api_key"})
+    def test_narrative_evidence_non_empty_when_anomalies_exist(self):
+        """Assert at least one action has a non-empty evidence_anomaly_ids list when CRITICAL/SEVERE anomalies exist."""
+        anomalies_dict = [make_test_anomaly("A", "churn_rate", severity_label="CRITICAL")]
+        report_dict = make_test_report_dict(anomalies=anomalies_dict, sector_id="TECH_SAAS")
+        enriched = enrich_report(report_dict)
+
+        self.assertIsNotNone(enriched.narrative)
+        has_evidence = any(len(act.evidence_anomaly_ids) > 0 for act in enriched.narrative.prioritized_actions)
+        self.assertTrue(has_evidence)
+
+    @patch.dict("os.environ", {"GEMINI_API_KEY": "test_fake_api_key"})
+    def test_low_confidence_narrative_uses_hedging_language(self):
+        """For a report with noise_confidence < 0.5, assert prompt includes competing explanations instruction."""
+        from c3_engine.narrative import generate_narrative
+
+        mock_resp = MagicMock()
+        mock_resp.parsed = None
+        mock_resp.text = MOCK_NARRATIVE_JSON
+        mock_resp.usage_metadata = MagicMock(total_token_count=150)
+        mock_genai.Client.return_value.chats.create.return_value.send_message.return_value = mock_resp
+        mock_genai.Client.return_value.chats.create.return_value.send_message.side_effect = None
+
+        anom = make_test_anomaly("A", "churn_rate")
+        anom["noise_confidence"] = 0.3
+        anom["candidate_explanations"] = ["Seasonal variance", "Co-movement symptom"]
+        report_dict = make_test_report_dict(anomalies=[anom], sector_id="TECH_SAAS")
+        report = AnomalyReport.model_validate(report_dict)
+
+        generate_narrative(report, [], [])
+        call_args = mock_genai.Client.return_value.chats.create.return_value.send_message.call_args[0][0]
+        self.assertIn("competing explanations", call_args)
+        self.assertIn("DO NOT state a single definitive root cause", call_args)
+
+    @patch.dict("os.environ", {"GEMINI_API_KEY": "test_fake_api_key"})
+    def test_high_confidence_narrative_does_not_hedge(self):
+        """For a report with noise_confidence = 0.85, assert prompt does not inject low-confidence hedging instruction."""
+        from c3_engine.narrative import generate_narrative
+
+        mock_resp = MagicMock()
+        mock_resp.parsed = None
+        mock_resp.text = MOCK_NARRATIVE_JSON
+        mock_resp.usage_metadata = MagicMock(total_token_count=150)
+        mock_genai.Client.return_value.chats.create.return_value.send_message.return_value = mock_resp
+        mock_genai.Client.return_value.chats.create.return_value.send_message.side_effect = None
+
+        anom = make_test_anomaly("A", "churn_rate")
+        anom["noise_confidence"] = 0.85
+        anom["candidate_explanations"] = []
+        report_dict = make_test_report_dict(anomalies=[anom], sector_id="TECH_SAAS")
+        report = AnomalyReport.model_validate(report_dict)
+
+        generate_narrative(report, [], [])
+        call_args = mock_genai.Client.return_value.chats.create.return_value.send_message.call_args[0][0]
+        self.assertNotIn("DO NOT state a single definitive root cause", call_args)
+
+
 if __name__ == "__main__":
     unittest.main()
+
 

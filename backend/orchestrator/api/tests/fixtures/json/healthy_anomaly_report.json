@@ -18,21 +18,36 @@
   "non_anomalous_highlights": [
     {
       "metric_id": "churn_rate",
+      "metric_display_name": null,
       "status": "healthy",
       "percentile": 54.0,
-      "note": "Churn is tracking in line with the expected baseline for a company of this profile."
+      "note": "Churn is tracking in line with the expected baseline for a company of this profile.",
+      "observed_value": null,
+      "expected_value": null,
+      "context_tags": null,
+      "natural_language_summary": null
     },
     {
       "metric_id": "net_revenue_retention",
+      "metric_display_name": null,
       "status": "healthy",
       "percentile": 58.0,
-      "note": "Net revenue retention is comfortably within the expected range."
+      "note": "Net revenue retention is comfortably within the expected range.",
+      "observed_value": null,
+      "expected_value": null,
+      "context_tags": null,
+      "natural_language_summary": null
     },
     {
       "metric_id": "ltv_cac_ratio",
+      "metric_display_name": null,
       "status": "healthy",
       "percentile": 71.0,
-      "note": "LTV:CAC ratio (computed) is above the healthy 3:1 benchmark for this profile."
+      "note": "LTV:CAC ratio (computed) is above the healthy 3:1 benchmark for this profile.",
+      "observed_value": null,
+      "expected_value": null,
+      "context_tags": null,
+      "natural_language_summary": null
     }
   ],
   "refusal": null,

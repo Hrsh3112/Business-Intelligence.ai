@@ -58,6 +58,9 @@ class MetricInput(BaseModel):
         le=1.0,
         description="Source confidence score (1.0 = direct user entry, 0.7-0.9 = clean CSV, 0.4-0.6 = OCR/fuzzy)"
     )
+    source_system: Optional[str] = Field(default=None, description="Source system e.g. CRM, ERP")
+    grain: Optional[str] = Field(default=None, description="e.g. daily, monthly")
+    data_as_of: Optional[str] = Field(default=None, description="ISO date string e.g. 2026-08-28")
 
     @field_validator("values")
     @classmethod

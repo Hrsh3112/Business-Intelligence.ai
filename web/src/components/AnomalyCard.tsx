@@ -67,7 +67,37 @@ export function AnomalyCard({
     >
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium tracking-wide text-ink-muted uppercase">{anomaly.category}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium tracking-wide text-ink-muted uppercase">{anomaly.category}</p>
+            {(anomaly.source_system || source?.source_system) && (
+              <span className="rounded-xs border border-rule bg-white/70 px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase text-ink-muted">
+                {anomaly.source_system ?? source?.source_system}
+                {anomaly.data_as_of && ` · ${anomaly.data_as_of}`}
+              </span>
+            )}
+            {anomaly.driver_rank === 1 && (
+              <span
+                className="rounded-xs border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase text-accent"
+                title={(anomaly as any).granger_tested ? "Identified as primary driver via Granger lead-lag causality" : "Identified as primary driver via magnitude heuristic"}
+              >
+                Primary Driver{(anomaly as any).granger_tested ? " · Granger" : ""}
+              </span>
+            )}
+            {(anomaly as any).decision_urgency && (
+              <span
+                className={`rounded-xs border px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
+                  (anomaly as any).decision_urgency === "escalating"
+                    ? "border-accent text-accent bg-accent/10"
+                    : (anomaly as any).decision_urgency === "improving"
+                    ? "border-green-600/40 text-green-700 bg-green-50"
+                    : "border-rule text-ink-muted bg-white/70"
+                }`}
+                title={`Decision urgency: ${(anomaly as any).decision_urgency}`}
+              >
+                {(anomaly as any).decision_urgency.replace(/_/g, " ")}
+              </span>
+            )}
+          </div>
           <h3 className="font-display text-lg font-medium text-ink">{anomaly.metric_display_name}</h3>
         </div>
         <span className="shrink-0 text-xs font-medium tracking-wide text-ink-muted uppercase">
@@ -75,9 +105,27 @@ export function AnomalyCard({
         </span>
       </header>
 
-      <div className="mt-4">
-        <SeverityConfidenceBar severityScore={anomaly.severity_score} noiseConfidence={anomaly.noise_confidence} />
-      </div>
+      {anomaly.noise_confidence !== null && anomaly.noise_confidence !== undefined && (
+        <div className="mt-4">
+          <SeverityConfidenceBar severityScore={anomaly.severity_score} noiseConfidence={anomaly.noise_confidence} />
+        </div>
+      )}
+
+      {anomaly.contribution_pct !== null && anomaly.contribution_pct !== undefined && (
+        <div className="mt-3 rounded-sm border border-rule bg-white/30 p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-ink-muted">Contribution to health score drop</span>
+            <span className="data font-medium text-ink">{anomaly.contribution_pct.toFixed(1)}%</span>
+          </div>
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-rule">
+            <div
+              className="h-full bg-accent transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.max(0, anomaly.contribution_pct))}%` }}
+              title={`This metric's weighted severity accounts for ${anomaly.contribution_pct.toFixed(1)}% of the overall health score deterioration.`}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="data mt-4 grid grid-cols-3 gap-3 text-sm">
         <div>
@@ -85,7 +133,14 @@ export function AnomalyCard({
           <p className="text-ink">{anomaly.deviation.observed_current.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-xs text-ink-muted">Expected</p>
+          <p className="text-xs text-ink-muted flex items-center gap-1">
+            Expected
+            {(anomaly as any).baseline_source === "ets_personalised" ? (
+              <span className="rounded border border-accent/40 bg-accent/10 px-1 text-[9px] font-medium uppercase text-accent" title="Personalised Holt-Winters ETS baseline">ETS</span>
+            ) : (
+              <span className="text-[9px] text-ink-muted/70 uppercase" title="Static sector-parametric cohort baseline">Sector</span>
+            )}
+          </p>
           <p className="text-ink">{anomaly.deviation.expected_value.toFixed(2)}</p>
         </div>
         <div>
@@ -155,19 +210,23 @@ export function AnomalyCard({
           any anomaly card"). Every figure above — z-score, severity, the
           noise verdict — came from deterministic code, and the card should
           say so where the numbers are, not only in the panel at the end. */}
-      {/* P2 item 10, the half C2 can honestly deliver. The problem statement
-          asks for alternative hypotheses under low confidence; naming the
-          competing explanations is C1/C3's job (they hold the correlation
-          model and the case base). What C2 owns is not letting a weak signal
-          render with the same authority as a strong one, and saying what would
-          resolve it. We state the uncertainty; we do not invent the rival
-          explanation. */}
-      {anomaly.noise_confidence < 0.5 && (
+      {anomaly.noise_confidence !== null && anomaly.noise_confidence !== undefined && anomaly.noise_confidence < 0.5 && (
         <p className="mt-3 rounded-sm border border-rule bg-white/40 p-2 text-[11px] text-ink-muted">
           Weak signal — {(anomaly.noise_confidence * 100).toFixed(0)}% confidence this is structural
           rather than noise. Treat it as a question, not a finding: more periods would settle whether
           this is a real shift or normal variation.
         </p>
+      )}
+
+      {(anomaly as any).candidate_explanations && (anomaly as any).candidate_explanations.length > 0 && (
+        <div className="mt-3 rounded-sm border border-rule bg-white/40 p-2.5 text-[11px] text-ink-muted">
+          <p className="font-medium text-ink">Alternative Hypotheses:</p>
+          <ul className="mt-1 list-disc list-inside space-y-0.5">
+            {(anomaly as any).candidate_explanations.map((exp: string, idx: number) => (
+              <li key={idx}>{exp}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {source && (
@@ -180,22 +239,24 @@ export function AnomalyCard({
       )}
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-2">
-        {showStatistics ? (
+        {showStatistics && anomaly.deviation.z_score !== null && anomaly.deviation.z_score !== undefined ? (
           <p className="max-w-prose text-[11px] text-ink-muted">
             Detected deterministically · z {anomaly.deviation.z_score.toFixed(2)} · percentile{" "}
-            {anomaly.deviation.percentile.toFixed(1)} · signal confidence{" "}
-            {(anomaly.noise_confidence * 100).toFixed(0)}% · severity{" "}
-            {anomaly.severity_score.toFixed(1)}/100 · no LLM involved in any figure on this card
+            {anomaly.deviation.percentile.toFixed(1)}
+            {anomaly.noise_confidence !== null && anomaly.noise_confidence !== undefined && ` · signal confidence ${(anomaly.noise_confidence * 100).toFixed(0)}%`}
+            {` · severity ${anomaly.severity_score.toFixed(1)}/100`} · no LLM involved in any figure on this card
           </p>
         ) : (
           <p className="max-w-prose text-[11px] text-ink-muted">
             Detected deterministically · no LLM involved in any figure on this card
           </p>
         )}
-        {/* Per-anomaly, not just per-report: "this one was noise" is the
-            correction an analyst actually wants to make, and it is meaningless
-            without knowing which anomaly they meant. */}
-        <FeedbackControl jobId={jobId} target="anomaly" anomalyId={anomaly.anomaly_id} />
+        <FeedbackControl
+          jobId={jobId}
+          target="anomaly"
+          anomalyId={anomaly.anomaly_id}
+          metricId={anomaly.metric_id}
+        />
       </div>
     </article>
   );

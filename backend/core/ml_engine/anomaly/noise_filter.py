@@ -1,12 +1,14 @@
-"""Multi-layer noise filtering for structural anomaly identification."""
-
-from typing import Dict, List, Optional
+import os
+from pathlib import Path
+from typing import Dict, List, Optional, Set
 import numpy as np
 
+from ..config.feedback_recalibrator import build_threshold_map
 from ..config.schema import OptimizationDirection, ThresholdsConfig
 from ..models.internal import FilterResult, MetricDeviation, MetricFeatures
 from ..synthetic.correlations import CorrelationEngine
 from ..synthetic.generator import CalibratedMetricBaseline
+from .isolation_forest_layer import build_metric_matrix, run_isolation_forest
 
 
 class MultiLayerNoiseFilter:
@@ -15,24 +17,68 @@ class MultiLayerNoiseFilter:
     def __init__(
         self,
         thresholds: ThresholdsConfig,
-        correlation_engine: CorrelationEngine
+        correlation_engine: CorrelationEngine,
+        sector_id: Optional[str] = None,
+        feedback_log_path: Optional[Path] = None,
+        metric_ids: Optional[List[str]] = None,
     ):
         self.thresholds = thresholds
         self.correlation_engine = correlation_engine
+        self.sector_id = sector_id
+        self.feedback_log_path = feedback_log_path
+
+        if sector_id and metric_ids:
+            self.thresholds_map = build_threshold_map(
+                sector=sector_id,
+                metric_ids=metric_ids,
+                feedback_log=feedback_log_path,
+            )
+        else:
+            self.thresholds_map = {}
+
+    def run_l1b_pass(self, all_metric_values: Dict[str, List[float]]) -> Set[str]:
+        """Run Isolation Forest multivariate anomaly detection across metrics.
+
+        Returns the set of metric IDs contributing to multivariate anomalies if flagged.
+        Controlled by USE_ISOLATION_FOREST environment variable (defaults to True if set or True).
+        """
+        use_if = os.getenv("USE_ISOLATION_FOREST", "true").lower() in ("true", "1", "yes")
+        if not use_if or not all_metric_values or len(all_metric_values) < 2:
+            return set()
+
+        matrix = build_metric_matrix(all_metric_values)
+        if matrix.shape[0] < 8 or matrix.shape[1] < 2:
+            return set()
+
+        flags = run_isolation_forest(matrix)
+        # If the latest period is flagged as multivariate outlier:
+        if len(flags) > 0 and bool(flags[-1]):
+            return set(all_metric_values.keys())
+        return set()
 
     def filter_metric(
         self,
         features: MetricFeatures,
         deviation: MetricDeviation,
         baseline: CalibratedMetricBaseline,
-        all_deviations: Dict[str, MetricDeviation]
+        all_deviations: Dict[str, MetricDeviation],
+        multivariate_flagged: bool = False,
     ) -> FilterResult:
         """Apply 4 filtering layers to the metric deviation."""
         abs_z = abs(deviation.z_score)
 
-        # Layer 1: Statistical Threshold
-        l1_passed = abs_z >= self.thresholds.z_threshold_flag
+        # Layer 1: Statistical Threshold (with Bayesian Recalibration + L1b Multivariate)
+        effective_threshold = self.thresholds_map.get(
+            baseline.metric_id, self.thresholds.z_threshold_flag
+        )
+        l1_passed = (abs_z >= effective_threshold) or multivariate_flagged
+
         if not l1_passed:
+            is_recalibrated = (
+                baseline.metric_id in self.thresholds_map
+                and self.thresholds_map[baseline.metric_id] != self.thresholds.z_threshold_flag
+            )
+            failed_layer_label = "L1_recalibrated" if is_recalibrated else "L1"
             return FilterResult(
                 passed=False,
                 l1_passed=False,
@@ -40,8 +86,8 @@ class MultiLayerNoiseFilter:
                 l3_passed=False,
                 l4_passed=False,
                 noise_confidence=0.1,
-                rejection_reason=f"Deviation (|z|={abs_z:.2f}) is below flag threshold ({self.thresholds.z_threshold_flag})",
-                layer_failed="L1",
+                rejection_reason=f"Deviation (|z|={abs_z:.2f}) is below flag threshold ({effective_threshold:.2f})",
+                layer_failed=failed_layer_label,
             )
 
         # Layer 2: Persistence Filter

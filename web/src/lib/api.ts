@@ -44,6 +44,10 @@ export interface FormMetadata {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
+function getApiKey(persona?: Persona | null): string {
+  return persona === "analyst" ? "analyst-demo-key" : "exec-demo-key";
+}
+
 async function parseJsonOrThrow<T>(response: Response): Promise<T> {
   let body: unknown;
   try {
@@ -63,9 +67,13 @@ export async function health(): Promise<{ status: string; [key: string]: unknown
 }
 
 export async function analyzeJson(companyInput: CompanyInput): Promise<ApiResponse> {
+  const apiKey = getApiKey(companyInput.persona);
   const response = await fetch(`${API_BASE_URL}/analyze`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Api-Key": apiKey,
+    },
     body: JSON.stringify(companyInput),
   });
   return parseJsonOrThrow<ApiResponse>(response);
@@ -90,7 +98,14 @@ export async function analyzeUpload(
   if (mappingOverrides && Object.keys(mappingOverrides).length > 0) {
     form.append("mapping_overrides", JSON.stringify(mappingOverrides));
   }
-  const response = await fetch(`${API_BASE_URL}/analyze/upload`, { method: "POST", body: form });
+  const apiKey = getApiKey(metadata.persona);
+  const response = await fetch(`${API_BASE_URL}/analyze/upload`, {
+    method: "POST",
+    headers: {
+      "X-Api-Key": apiKey,
+    },
+    body: form,
+  });
   return parseJsonOrThrow<ApiResponse>(response);
 }
 

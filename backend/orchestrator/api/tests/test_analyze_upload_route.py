@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from api.config.settings import settings
 from api.main import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-Api-Key": "analyst-demo-key"})
 
 VALID_METADATA = json.dumps(
     {

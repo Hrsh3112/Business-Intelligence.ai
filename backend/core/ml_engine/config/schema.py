@@ -83,6 +83,7 @@ class ThresholdsConfig(BaseModel):
     min_persistence_periods: int = 2
     correlation_threshold: float = 0.5
     urgency_acceleration_threshold: float = 0.1
+    enable_ets_baseline: bool = False
     min_periods_for_trend: Union[Dict[str, int], int] = Field(
         default_factory=lambda: {"monthly": 6, "quarterly": 4, "annual": 3}
     )
