@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ApiResponse, Persona } from "@/lib/api";
+import type { components } from "@/types/api";
 import { HealthScore } from "./HealthScore";
 import { DegradedBanner } from "./DegradedBanner";
 import { Narrative } from "./Narrative";
@@ -28,6 +29,50 @@ interface ResultsViewProps {
  * (conditional) -> narrative -> anomalies -> highlights -> skipped-metrics
  * notice. A report you read top to bottom, not a grid dashboard.
  */
+function ContributionWaterfall({ anomalies }: { anomalies: components["schemas"]["Anomaly"][] }) {
+  const anomaliesWithContrib = anomalies.filter(
+    (a) => a.contribution_pct !== null && a.contribution_pct !== undefined && a.contribution_pct > 0
+  );
+  if (anomaliesWithContrib.length === 0) return null;
+
+  const colors = ["bg-accent", "bg-amber-600", "bg-indigo-600", "bg-teal-600", "bg-rose-600"];
+
+  return (
+    <div className="rounded-sm border border-rule bg-white/40 p-4">
+      <div className="flex items-center justify-between text-xs font-medium tracking-wide text-ink-muted uppercase">
+        <span>Variance / Health Drop Attribution</span>
+        <span className="normal-case text-ink-muted">Multi-factor decomposition</span>
+      </div>
+      <div className="mt-2.5 flex h-3.5 w-full overflow-hidden rounded-full bg-rule/80">
+        {anomaliesWithContrib.map((a, idx) => {
+          const pct = Math.min(100, Math.max(0, a.contribution_pct ?? 0));
+          const colorClass = colors[idx % colors.length];
+          return (
+            <div
+              key={a.anomaly_id}
+              className={`h-full ${colorClass} transition-all duration-300`}
+              style={{ width: `${pct}%` }}
+              title={`${a.metric_display_name}: ${pct.toFixed(1)}% of deterioration`}
+            />
+          );
+        })}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-muted">
+        {anomaliesWithContrib.map((a, idx) => {
+          const colorClass = colors[idx % colors.length];
+          return (
+            <div key={a.anomaly_id} className="flex items-center gap-1.5">
+              <span className={`h-2.5 w-2.5 rounded-full ${colorClass}`} />
+              <span className="text-ink font-medium">{a.metric_display_name}</span>
+              <span className="data text-ink-muted">({(a.contribution_pct ?? 0).toFixed(1)}%)</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ResultsView({ response, onReset }: ResultsViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   // Seeded from what the submission asked for, then switchable in place — the
@@ -133,10 +178,15 @@ export function ResultsView({ response, onReset }: ResultsViewProps) {
 
       {sortedAnomalies.length > 0 && (
         <section>
-          <h2 className="text-sm font-medium tracking-wide text-ink-muted uppercase">
-            Anomalies ({sortedAnomalies.length})
-          </h2>
-          <div className="mt-3 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium tracking-wide text-ink-muted uppercase">
+              Anomalies ({sortedAnomalies.length})
+            </h2>
+          </div>
+          <div className="mt-3">
+            <ContributionWaterfall anomalies={sortedAnomalies} />
+          </div>
+          <div className="mt-4 space-y-4">
             {sortedAnomalies.map((anomaly, i) => (
               <div
                 key={anomaly.anomaly_id}

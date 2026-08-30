@@ -56,11 +56,18 @@ def _meta(**overrides) -> str:
     return json.dumps(base)
 
 
-def _upload(csv_bytes=CLEAN_CSV, metadata=None, filename="data.csv"):
+def _upload(csv_bytes=CLEAN_CSV, metadata=None, filename="data.csv", headers=None):
+    meta_str = metadata or _meta()
+    if headers is None:
+        meta_dict = json.loads(meta_str) if isinstance(meta_str, str) else meta_str
+        persona = meta_dict.get("persona", "executive")
+        key = "exec-demo-key" if persona == "executive" else "analyst-demo-key"
+        headers = {"X-Api-Key": key}
     return client.post(
         "/analyze/upload",
         files={"file": (filename, csv_bytes, "text/csv")},
-        data={"metadata": metadata or _meta()},
+        data={"metadata": meta_str},
+        headers=headers,
     )
 
 
@@ -118,7 +125,11 @@ class TestDeclaredVsInferred:
 
     def test_direct_analyze_has_no_form_metadata_so_source_is_unknown(self):
         company_input, _ = FIXTURE_BUILDERS["critical"]()
-        response = client.post("/analyze", json=company_input.model_dump(mode="json", by_alias=True))
+        response = client.post(
+            "/analyze",
+            json=company_input.model_dump(mode="json", by_alias=True),
+            headers={"X-Api-Key": "analyst-demo-key"},
+        )
         manifest = response.json()["source_manifest"]
         assert len(manifest) > 0  # computed facts still present
         assert all(m["source_system"] is None for m in manifest)
@@ -127,6 +138,8 @@ class TestDeclaredVsInferred:
 
 
 class TestEdges:
+    """The manifest describes what was analysed, not everything in the file."""
+
     def test_no_input_yields_an_empty_manifest_not_a_crash(self):
         assert build_source_manifest(None) == []
 
@@ -152,12 +165,16 @@ class TestPersona:
 
     def test_direct_analyze_has_no_form_metadata_so_defaults_apply(self):
         company_input, _ = FIXTURE_BUILDERS["critical"]()
-        response = client.post("/analyze", json=company_input.model_dump(mode="json", by_alias=True))
+        response = client.post(
+            "/analyze",
+            json=company_input.model_dump(mode="json", by_alias=True),
+            headers={"X-Api-Key": "exec-demo-key"},
+        )
         assert response.json()["persona"] == "executive"
 
     def test_persona_changes_nothing_that_was_computed(self):
         # The guarantee that makes persona safe: same submission, same numbers.
-        # Only the rendering layer differs.
+        # Field redaction differs server-side, but computed metrics/health match.
         exec_body = _upload(metadata=_meta(persona="executive")).json()
         analyst_body = _upload(metadata=_meta(persona="analyst")).json()
 
@@ -165,7 +182,7 @@ class TestPersona:
             report = body["result"]["anomaly_report"]
             return (
                 report["overall_health_score"],
-                [(a["anomaly_id"], a["severity_score"], a["deviation"]["z_score"]) for a in report["anomalies"]],
+                [(a["anomaly_id"], a["severity_score"]) for a in report["anomalies"]],
                 [(m["metric_id"], m["points"], m["grain"]) for m in body["source_manifest"]],
             )
 

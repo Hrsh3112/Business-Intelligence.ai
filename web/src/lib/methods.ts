@@ -16,7 +16,7 @@
  * defend.
  */
 
-export type MethodKind = "deterministic" | "statistical" | "rules" | "template" | "llm";
+export type MethodKind = "deterministic" | "statistical" | "rules" | "template" | "ml" | "llm";
 
 export interface MethodEntry {
   stage: string;
@@ -30,6 +30,7 @@ export const METHOD_KIND_LABEL: Record<MethodKind, string> = {
   statistical: "Statistical",
   rules: "Business rules",
   template: "Template",
+  ml: "ML Model",
   llm: "LLM",
 };
 
@@ -47,10 +48,10 @@ export const METHODS: MethodEntry[] = [
     technique: "Range checks plus a distributional fraction/percent check; gap interpolation under 4 periods",
   },
   {
-    stage: "Synthetic baseline",
+    stage: "Baseline generation",
     owner: "Detection",
-    kind: "statistical",
-    technique: "Parameterised distributions (normal / lognormal), calibrated per sector and revenue band",
+    kind: "ml",
+    technique: "Holt-Winters ETS (statsmodels, trend=additive, damped) fitted on company history — sector-parametric fallback for < 6 periods",
   },
   {
     stage: "Deviation measurement",
@@ -65,16 +66,34 @@ export const METHODS: MethodEntry[] = [
     technique: "4-layer sieve: magnitude |z| ≥ 1.5, persistence ≥ 2 periods, correlation consistency, seasonality",
   },
   {
+    stage: "L1b — Multivariate detection",
+    owner: "Detection",
+    kind: "ml",
+    technique: "Isolation Forest (sklearn, contamination=0.1, unsupervised). Applied when ≥ 2 metrics and ≥ 8 periods available",
+  },
+  {
     stage: "Cross-metric correlation",
     owner: "Detection",
     kind: "statistical",
     technique: "Pearson coefficients from a fixed per-sector matrix, threshold |r| ≥ 0.5",
   },
   {
+    stage: "Driver directionality",
+    owner: "Detection",
+    kind: "statistical",
+    technique: "Granger causality test (statsmodels, max_lag=2, p<0.05) when ≥ 10 periods; heuristic fallback",
+  },
+  {
     stage: "Severity scoring",
     owner: "Detection",
     kind: "deterministic",
     technique: "Weighted linear combination over 5 components, 0–100, then exclusive band thresholds",
+  },
+  {
+    stage: "Threshold recalibration",
+    owner: "Detection",
+    kind: "ml",
+    technique: "Beta-Binomial Bayesian update (prior Beta(1,1)) per (sector, metric) from analyst feedback log",
   },
   {
     stage: "Abstention gate",

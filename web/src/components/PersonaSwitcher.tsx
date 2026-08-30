@@ -69,9 +69,8 @@ export function PersonaSwitcher({ persona, onChange }: PersonaSwitcherProps) {
 export function EntitlementNote() {
   return (
     <p className="text-[11px] text-ink-muted">
-      Statistical fields are withheld from the executive view to demonstrate field-level entitlement.
-      In production this would be enforced at the data layer with row- and column-level security;
-      here the redaction is applied in the presentation layer only.
+      Role is enforced server-side by API key. Field-level redaction is applied at the API layer.
+      Row-level security would be enforced at the data source in production.
     </p>
   );
 }

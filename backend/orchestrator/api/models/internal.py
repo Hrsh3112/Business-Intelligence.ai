@@ -264,6 +264,8 @@ class FeedbackRequest(BaseModel):
     job_id: str
     target: Literal["report", "narrative", "anomaly"] = "report"
     anomaly_id: Optional[str] = None  # required in spirit when target="anomaly"
+    metric_id: Optional[str] = None
+    sector_id: Optional[str] = None
     verdict: FeedbackVerdict
     correction: Optional[FeedbackCorrection] = None
     # Capped: this is written to disk unauthenticated, so an uncapped field is

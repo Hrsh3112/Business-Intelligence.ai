@@ -139,6 +139,7 @@ class ActionItem(BaseModel):
     description: str
     impact: Literal["HIGH", "MEDIUM", "LOW"]
     effort: Literal["HIGH", "MEDIUM", "LOW"]
+    evidence_anomaly_ids: list[str] = []
 
 class Narrative(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -146,6 +147,7 @@ class Narrative(BaseModel):
     likely_root_causes: list[str]
     prioritized_actions: list[ActionItem]
     positives: list[str]
+    evidence_citations: list[str] = []
 
 class EnrichmentMetadata(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)

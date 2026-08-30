@@ -4,7 +4,7 @@ Shared with API Layer, Case-Based Reasoning, and LLM developers.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from .input_schema import SectorId, RevenueBand, ReportingPeriod
 
@@ -99,6 +99,14 @@ class AnomalyItem(BaseModel):
             "1 = most likely primary driver; 0 = likely symptom or uncorrelated."
         )
     )
+    granger_tested: bool = Field(
+        default=False,
+        description="True if Granger causality test was applied for driver ranking. False = magnitude heuristic was used."
+    )
+    baseline_source: Literal["ets_personalised", "sector_parametric"] = Field(
+        default="sector_parametric",
+        description="Method used to produce the expected baseline for this anomaly"
+    )
     candidate_explanations: List[str] = Field(
         default_factory=list,
         description=(
@@ -127,6 +135,16 @@ class AnomalyItem(BaseModel):
         ...,
         description="Deterministic executive summary of the anomaly for LLM prompts and reports"
     )
+    contribution_pct: Optional[float] = Field(
+        default=None,
+        description=(
+            "Percentage of the overall health score deterioration attributable to this anomaly. "
+            "Computed as: (this_metric_weighted_severity / total_weighted_severity) * 100. "
+            "Null when health score has not deteriorated (overall_health_score >= 50 or total == 0)."
+        )
+    )
+    source_system: Optional[str] = Field(default=None, description="Originating source system, e.g. CRM, ERP")
+    data_as_of: Optional[str] = Field(default=None, description="ISO date string of source data freshness")
 
 
 class HighlightItem(BaseModel):

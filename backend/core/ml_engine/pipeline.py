@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+from pathlib import Path
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .config.loader import load_sector_config, load_thresholds
 from .models.input_schema import CompanyInput, RevenueBand, SectorId
@@ -20,7 +21,10 @@ from .anomaly.detector import AnomalyDetector
 from .anomaly.refusal import RefusalEvaluator
 
 
-def analyze_company(input_data: CompanyInput) -> AnomalyReport:
+def analyze_company(
+    input_data: CompanyInput,
+    feedback_log_path: Optional[Any] = None,
+) -> AnomalyReport:
     """Analyze company metrics against sector synthetic baseline and return AnomalyReport.
 
     This function is CPU-bound, deterministic, and requires no network I/O.
@@ -32,7 +36,11 @@ def analyze_company(input_data: CompanyInput) -> AnomalyReport:
     thresholds = load_thresholds()
     sector_cfg = load_sector_config(input_data.sector_id.value)
     profile_gen = SyntheticProfileGenerator(sector_cfg)
-    baselines_map = profile_gen.get_calibrated_profile(input_data.company_metadata.revenue_band)
+    metric_inputs_map = {m.metric_id: m for m in input_data.metrics}
+    baselines_map = profile_gen.get_calibrated_profile(
+        input_data.company_metadata.revenue_band,
+        metric_inputs_map=metric_inputs_map,
+    )
 
     # 1. Check for refusal conditions (e.g. all metrics < required periods or low confidence)
     refusal_details = RefusalEvaluator.evaluate_refusal(
@@ -107,7 +115,15 @@ def analyze_company(input_data: CompanyInput) -> AnomalyReport:
 
     # 3. Detect Anomalies & Score
     corr_engine = CorrelationEngine(sector_cfg)
-    detector = AnomalyDetector(thresholds, corr_engine)
+    sector_id_str = input_data.sector_id.value if hasattr(input_data.sector_id, "value") else str(input_data.sector_id)
+    detector = AnomalyDetector(
+        thresholds=thresholds,
+        correlation_engine=corr_engine,
+        sector_id=sector_id_str,
+        feedback_log_path=feedback_log_path or Path("feedback.jsonl"),
+        metric_ids=list(baselines_map.keys()),
+    )
+    metric_inputs_map = {m.metric_id: m for m in input_data.metrics}
     anomalies, highlights, health_score, filtered_metrics = detector.detect_anomalies(
         features_map=features_map,
         deviations_map=deviations_map,
@@ -115,6 +131,7 @@ def analyze_company(input_data: CompanyInput) -> AnomalyReport:
         data_confidence_map=data_confidence_map,
         revenue_band=input_data.company_metadata.revenue_band,
         sector_config=sector_cfg,
+        metric_inputs_map=metric_inputs_map,
     )
 
     # 3b. Evaluate contradictory evidence refusal
