@@ -69,6 +69,7 @@ class SyntheticProfileGenerator:
         self,
         revenue_band: RevenueBand,
         metric_inputs_map: Optional[Dict[str, Any]] = None,
+        enable_ets_baseline: bool = False,
     ) -> Dict[str, CalibratedMetricBaseline]:
         """Compute size-adjusted baseline expectations for each metric in the sector."""
         profile = {}
@@ -78,8 +79,8 @@ class SyntheticProfileGenerator:
             std = base_params.std
             source = "sector_parametric"
 
-            # Check for personalised ETS baseline if sufficient historical data exists (>= 6 prior history periods)
-            if metric_inputs_map and metric_id in metric_inputs_map:
+            # Check for personalised ETS baseline if enabled and sufficient historical data exists (>= 6 prior history periods)
+            if enable_ets_baseline and metric_inputs_map and metric_id in metric_inputs_map:
                 metric_in = metric_inputs_map[metric_id]
                 values = getattr(metric_in, "values", None)
                 if values and len(values) >= 7:

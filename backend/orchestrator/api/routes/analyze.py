@@ -44,7 +44,7 @@ async def analyze(
     company_input.persona = Persona(persona)
 
     reconciled_warnings: list[ParseWarning] = []
-    has_downsampling = False
+    downsampled_metrics: list[str] = []
     for metric in company_input.metrics:
         if getattr(metric, "grain", None) == "daily" or any(len(p.period) > 7 for p in metric.values):
             raw_pts = [{"period": p.period, "value": p.value} for p in metric.values]
@@ -52,13 +52,15 @@ async def analyze(
             metric.values = [DataPoint(period=dp["period"], value=dp["value"]) for dp in downsampled]
             metric.grain = "monthly"
             metric.granularity = Granularity.MONTHLY
-            has_downsampling = True
+            src = getattr(metric, "source_system", None) or metric.metric_id
+            downsampled_metrics.append(f"{src} ({metric.metric_id})" if getattr(metric, "source_system", None) else metric.metric_id)
 
-    if has_downsampling:
+    if downsampled_metrics:
+        src_summary = ", ".join(downsampled_metrics)
         reconciled_warnings.append(
             ParseWarning(
                 code=ParseWarningCode.MIXED_GRANULARITY,
-                message="CRM data (daily) was downsampled to monthly grain to align with ERP data before analysis.",
+                message=f"Daily series for {src_summary} was downsampled to monthly grain (values averaged) to align with monthly data before analysis.",
             )
         )
 
@@ -134,7 +136,7 @@ async def analyze_upload(
 
     # Check for daily downsampling if needed
     reconciled_warnings: list[ParseWarning] = []
-    has_downsampling = False
+    downsampled_metrics: list[str] = []
     for metric in result.company_input.metrics:
         if getattr(metric, "grain", None) == "daily" or any(len(p.period) > 7 for p in metric.values):
             raw_pts = [{"period": p.period, "value": p.value} for p in metric.values]
@@ -142,13 +144,15 @@ async def analyze_upload(
             metric.values = [DataPoint(period=dp["period"], value=dp["value"]) for dp in downsampled]
             metric.grain = "monthly"
             metric.granularity = Granularity.MONTHLY
-            has_downsampling = True
+            src = getattr(metric, "source_system", None) or (form_metadata.metric_sources or {}).get(metric.metric_id) or form_metadata.source_system or metric.metric_id
+            downsampled_metrics.append(f"{src} ({metric.metric_id})" if src != metric.metric_id else metric.metric_id)
 
-    if has_downsampling:
+    if downsampled_metrics:
+        src_summary = ", ".join(downsampled_metrics)
         reconciled_warnings.append(
             ParseWarning(
                 code=ParseWarningCode.MIXED_GRANULARITY,
-                message="CRM data (daily) was downsampled to monthly grain to align with ERP data before analysis.",
+                message=f"Daily series for {src_summary} was downsampled to monthly grain (values averaged) to align with monthly data before analysis.",
             )
         )
 

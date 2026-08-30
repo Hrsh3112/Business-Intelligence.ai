@@ -33,8 +33,57 @@ def test_ets_raises_on_short_series():
         fit_ets_baseline(short_values)
 
 
-def test_ets_baseline_used_when_history_sufficient():
-    """When a metric has >= 7 periods (>= 6 prior history periods), pipeline should use ets_personalised baseline."""
+def test_sector_parametric_used_by_default_even_with_sufficient_history():
+    """By default (enable_ets_baseline=False), peer sector_parametric baseline is preserved."""
+    periods = [f"2025-0{i}" for i in range(1, 9)]
+    vals = [2.0, 2.1, 1.9, 2.0, 2.2, 2.0, 8.0, 8.5]
+    data_points = [TimeSeriesPoint(period=p, value=v) for p, v in zip(periods, vals)]
+
+    metric = MetricInput(
+        metric_id="churn_rate",
+        granularity=PeriodType.MONTHLY,
+        confidence=1.0,
+        source_system="CRM",
+        values=data_points,
+    )
+    arr_points = [TimeSeriesPoint(period=p, value=100000.0) for p in periods]
+    arr_metric = MetricInput(
+        metric_id="annual_recurring_revenue",
+        granularity=PeriodType.MONTHLY,
+        confidence=1.0,
+        source_system="ERP",
+        values=arr_points,
+    )
+
+    company = CompanyInput(
+        company_id="comp_default_test",
+        sector_id=SectorId.TECH_SAAS,
+        reporting_period=ReportingPeriod(type=PeriodType.MONTHLY, start="2025-01-01", end="2025-08-31"),
+        company_metadata=CompanyMetadata(
+            name="Default Baseline Test Co",
+            revenue_band=RevenueBand.ONE_TO_10M,
+            employee_count=50,
+        ),
+        metrics=[metric, arr_metric],
+    )
+
+    report = analyze_company(company)
+    assert report.refusal is None
+    anom = next((a for a in report.anomalies if a.metric_id == "churn_rate"), None)
+    assert anom is not None
+    assert anom.baseline_source == "sector_parametric"
+
+
+def test_ets_baseline_used_when_explicitly_enabled(monkeypatch):
+    """When enable_ets_baseline is explicitly enabled, pipeline should use ets_personalised baseline."""
+    import ml_engine.pipeline as pipe_mod
+    original_loader = pipe_mod.load_thresholds
+    def patched_thresholds():
+        t = original_loader()
+        t.enable_ets_baseline = True
+        return t
+    monkeypatch.setattr(pipe_mod, "load_thresholds", patched_thresholds)
+
     periods = [f"2025-0{i}" for i in range(1, 9)]
     # 6 baseline periods of ~2.0% churn, then 2 periods of 8.0% spike (passes persistence filter)
     vals = [2.0, 2.1, 1.9, 2.0, 2.2, 2.0, 8.0, 8.5]

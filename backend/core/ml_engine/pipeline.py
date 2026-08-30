@@ -40,6 +40,7 @@ def analyze_company(
     baselines_map = profile_gen.get_calibrated_profile(
         input_data.company_metadata.revenue_band,
         metric_inputs_map=metric_inputs_map,
+        enable_ets_baseline=getattr(thresholds, "enable_ets_baseline", False),
     )
 
     # 1. Check for refusal conditions (e.g. all metrics < required periods or low confidence)

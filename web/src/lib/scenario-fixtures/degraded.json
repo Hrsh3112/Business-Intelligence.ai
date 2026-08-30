@@ -1,5 +1,5 @@
 {
-  "job_id": "5e2aba8a-511d-4786-8173-ec356be8adfe",
+  "job_id": "74649b1e-b12f-436f-a58b-8f1c767b8b6c",
   "status": "complete",
   "result": {
     "$schema": "enriched_report_v1",
@@ -100,7 +100,15 @@
             "retention_leak",
             "customer_attrition"
           ],
-          "natural_language_summary": "Churn rate rose from 2.1% to 5.2% over the past 8 months, consistently exceeding the expected baseline of 2.0% for a company of this profile."
+          "natural_language_summary": "Churn rate rose from 2.1% to 5.2% over the past 8 months, consistently exceeding the expected baseline of 2.0% for a company of this profile.",
+          "driver_rank": 1,
+          "candidate_explanations": [],
+          "contribution_pct": 63.9,
+          "source_system": "CRM export (daily rollup)",
+          "data_as_of": "2024-08-31",
+          "baseline_source": "sector_parametric",
+          "decision_urgency": "stable_bad",
+          "granger_tested": false
         },
         {
           "anomaly_id": "anom_critical_nrr",
@@ -182,7 +190,15 @@
             "expansion_revenue",
             "account_health"
           ],
-          "natural_language_summary": "Net revenue retention fell from 106% to 88% over the past 8 months, below the expected baseline of 100% for a company of this profile, alongside a concurrent rise in churn."
+          "natural_language_summary": "Net revenue retention fell from 106% to 88% over the past 8 months, below the expected baseline of 100% for a company of this profile, alongside a concurrent rise in churn.",
+          "driver_rank": 0,
+          "candidate_explanations": [],
+          "contribution_pct": 36.1,
+          "source_system": "ERP export (monthly)",
+          "data_as_of": "2024-08-31",
+          "baseline_source": "sector_parametric",
+          "decision_urgency": "stable_bad",
+          "granger_tested": false
         }
       ],
       "non_anomalous_highlights": [

@@ -155,4 +155,67 @@ def test_daily_grain_downsampling_and_warning():
     assert any("downsampled to monthly grain" in msg for msg in warning_msgs)
 
 
+def test_multisource_crm_fixture_ingestion():
+    """Verify that data/crm_fixture.json can be loaded as a daily-grain source and analyzed alongside ERP metrics."""
+    import json
+    from pathlib import Path
+
+    crm_path = Path(__file__).resolve().parents[4] / "data" / "crm_fixture.json"
+    assert crm_path.exists(), f"CRM fixture file not found at {crm_path}"
+
+    with open(crm_path, "r", encoding="utf-8") as f:
+        crm_data = json.load(f)
+
+    # Build multi-source payload combining CRM daily metrics and ERP monthly metrics
+    metrics = []
+    for m_id, points in crm_data["metrics"].items():
+        metrics.append({
+            "metric_id": m_id,
+            "granularity": "monthly",
+            "grain": crm_data["grain"],
+            "source_system": crm_data["source_system"],
+            "data_as_of": crm_data["data_as_of"],
+            "confidence": 1.0,
+            "values": points,
+        })
+
+    # Add monthly ERP metric
+    monthly_periods = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"]
+    metrics.append({
+        "metric_id": "gross_margin",
+        "granularity": "monthly",
+        "source_system": "ERP",
+        "confidence": 1.0,
+        "values": [{"period": p, "value": 75.0} for p in monthly_periods],
+    })
+
+    payload = {
+        "company_id": "comp_multisource_demo",
+        "sector_id": "TECH_SAAS",
+        "reporting_period": {"type": "monthly", "start": "2026-01-01", "end": "2026-06-30"},
+        "company_metadata": {
+            "name": "Multi-Source SaaS Corp",
+            "revenue_band": "1M-10M",
+            "employee_count": 60,
+            "region": "US",
+        },
+        "metrics": metrics,
+    }
+
+    response = client.post("/analyze", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "complete"
+    # Verify downsampling warning was generated for the daily CRM data
+    warning_msgs = [w["message"] for w in body.get("warnings", [])]
+    assert any("downsampled to monthly grain" in msg for msg in warning_msgs)
+    assert any("CRM" in msg for msg in warning_msgs)
+    # Verify manifest reflects both CRM and ERP sources
+    sources = {m["metric_id"]: m["source_system"] for m in body.get("source_manifest", [])}
+    assert sources.get("churn_rate") == "CRM"
+    assert sources.get("customer_acquisition_cost") == "CRM"
+    assert sources.get("gross_margin") == "ERP"
+
+
+
 

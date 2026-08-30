@@ -221,6 +221,9 @@ class Anomaly(BaseModel):
     contribution_pct: Optional[float] = None
     source_system: Optional[str] = None
     data_as_of: Optional[str] = None
+    baseline_source: Optional[str] = "sector_parametric"
+    decision_urgency: Optional[str] = "stable_bad"
+    granger_tested: Optional[bool] = False
 
 
 class HealthyHighlight(BaseModel):

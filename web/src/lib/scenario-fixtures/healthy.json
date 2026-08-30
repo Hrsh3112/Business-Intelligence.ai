@@ -1,5 +1,5 @@
 {
-  "job_id": "0813c21c-478a-45b8-af61-7b81fe2f5745",
+  "job_id": "7bb59370-3264-4a0a-83cd-f9079c128e37",
   "status": "complete",
   "result": {
     "$schema": "enriched_report_v1",
@@ -79,7 +79,8 @@
         "Churn is tracking in line with the expected baseline for a company of this profile.",
         "Net revenue retention is comfortably within the expected range.",
         "LTV:CAC ratio (computed) is above the healthy 3:1 benchmark for this profile."
-      ]
+      ],
+      "evidence_citations": []
     },
     "metadata": {
       "llm_model": "mock-llm-v1",

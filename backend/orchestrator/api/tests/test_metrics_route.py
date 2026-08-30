@@ -58,6 +58,33 @@ class TestCatalog:
         retail = {m["metric_id"] for m in client.get("/metrics/RETAIL").json()["metrics"]}
         assert {"gross_margin", "customer_acquisition_cost"} <= (saas & retail)
 
+    def test_drivers_and_correlation_matrix_published(self):
+        body = client.get("/metrics/TECH_SAAS").json()
+        assert "correlation_matrix" in body
+        assert body["correlation_matrix"] is not None
+        assert "churn_rate" in body["correlation_matrix"]
+        churn = next(m for m in body["metrics"] if m["metric_id"] == "churn_rate")
+        assert "drivers" in churn
+        assert "net_revenue_retention" in churn["drivers"]
+
+    def test_access_restrictions_and_lineage_published(self):
+        body = client.get("/metrics/TECH_SAAS").json()
+        assert "access_entitlements" in body
+        assert "executive" in body["access_entitlements"]
+        assert "analyst" in body["access_entitlements"]
+        assert "z_score" in body["access_entitlements"]["executive"]["redacted_fields"]
+        assert "lineage_manifest_spec" in body
+        churn = next(m for m in body["metrics"] if m["metric_id"] == "churn_rate")
+        assert churn["lineage"] is not None
+        assert "CRM" in churn["lineage"]["supported_sources"]
+
+    def test_descriptions_and_formulas_published(self):
+        body = client.get("/metrics/TECH_SAAS").json()
+        churn = next(m for m in body["metrics"] if m["metric_id"] == "churn_rate")
+        assert churn["description"] is not None
+        assert churn["calculation_formula"] is not None
+        assert "Lost_Customers" in churn["calculation_formula"]
+
 
 class TestUnknownSector:
     def test_unknown_sector_is_a_clean_404_naming_the_valid_ones(self):

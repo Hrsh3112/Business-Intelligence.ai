@@ -83,6 +83,20 @@ export function AnomalyCard({
                 Primary Driver{(anomaly as any).granger_tested ? " · Granger" : ""}
               </span>
             )}
+            {(anomaly as any).decision_urgency && (
+              <span
+                className={`rounded-xs border px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
+                  (anomaly as any).decision_urgency === "escalating"
+                    ? "border-accent text-accent bg-accent/10"
+                    : (anomaly as any).decision_urgency === "improving"
+                    ? "border-green-600/40 text-green-700 bg-green-50"
+                    : "border-rule text-ink-muted bg-white/70"
+                }`}
+                title={`Decision urgency: ${(anomaly as any).decision_urgency}`}
+              >
+                {(anomaly as any).decision_urgency.replace(/_/g, " ")}
+              </span>
+            )}
           </div>
           <h3 className="font-display text-lg font-medium text-ink">{anomaly.metric_display_name}</h3>
         </div>
@@ -202,6 +216,17 @@ export function AnomalyCard({
           rather than noise. Treat it as a question, not a finding: more periods would settle whether
           this is a real shift or normal variation.
         </p>
+      )}
+
+      {(anomaly as any).candidate_explanations && (anomaly as any).candidate_explanations.length > 0 && (
+        <div className="mt-3 rounded-sm border border-rule bg-white/40 p-2.5 text-[11px] text-ink-muted">
+          <p className="font-medium text-ink">Alternative Hypotheses:</p>
+          <ul className="mt-1 list-disc list-inside space-y-0.5">
+            {(anomaly as any).candidate_explanations.map((exp: string, idx: number) => (
+              <li key={idx}>{exp}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {source && (

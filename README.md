@@ -36,7 +36,7 @@ This distinction is explicitly documented, verifiable in the source, and enforce
 | Requirement | Status | Details |
 |---|---|---|
 | 3–5 connected KPIs across 2–3 sources with different grains | Implemented | Up to 7 KPIs (SaaS sector) or 7 KPIs (Retail); mixed CRM (daily) + ERP (monthly) granularity reconciliation |
-| Lightweight KPI / semantic contract | Implemented | Machine-readable YAML per sector; `GET /metrics/{sector_id}` exposes it at runtime |
+| Lightweight KPI / semantic contract | Implemented | Machine-readable YAML per sector; `GET /metrics/{sector_id}` exposes definitions, calculation formulas, correlation matrix, drivers, role-based access restrictions, and lineage at runtime |
 | At least 2 personas with different narratives or actions | Implemented | `executive` and `analyst` personas; different LLM prompt templates; analyst-only fields redacted for executive |
 | One multi-factor KPI movement with known drivers | Implemented | Critical scenario: MRR collapse + churn surge + CAC inflation, correlated via Pearson graph and co-movement cluster |
 | One low-confidence scenario — abstain or request clarification | Implemented | `noise_confidence < 0.5` triggers competing explanations; contradictory evidence triggers a full refusal with diagnostics |
@@ -311,7 +311,7 @@ The web application ships with four pre-generated scenario fixtures demonstratin
 | API & orchestration (C2) | FastAPI, Pydantic v2, asyncio |
 | Frontend | Next.js 15, React 19, TypeScript |
 | Configuration | YAML sector configs, environment variables |
-| Testing | pytest (303 tests, 0 failures) |
+| Testing | pytest (340 tests, 0 failures) |
 
 ---
 
@@ -350,6 +350,7 @@ The web application ships with four pre-generated scenario fixtures demonstratin
 |   `-- types/                   # TypeScript interfaces for all API response shapes
 |
 +-- data/samples/                # Sample CSV files for testing and demo
++-- data/crm_fixture.json        # Daily CRM sample fixture for multi-source ingestion testing
 +-- docs/                        # Architecture, KPI contract, LLM vs. deterministic, quickstart
 +-- scripts/                     # dump_scenario_responses.py (generates fixture JSON)
 +-- .env.example                 # Environment configuration template
@@ -400,7 +401,7 @@ chmod +x start.sh && ./start.sh
 
 ```bash
 pytest backend/
-# 303 passed
+# 340 passed
 ```
 
 ---

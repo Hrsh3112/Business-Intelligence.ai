@@ -19,7 +19,10 @@
   "refusal": {
     "reason": "insufficient_periods",
     "message": "Every submitted metric has fewer than 6 monthly periods, the floor for full trend analysis. We can't reliably separate a genuine shift from noise with this little history.",
-    "suggested_resolution": "Submit at least 6 consecutive monthly periods for at least one metric to receive a full analysis."
+    "suggested_resolution": "Submit at least 6 consecutive monthly periods for at least one metric to receive a full analysis.",
+    "diagnostic_suggestion": null,
+    "required_data": null,
+    "missing_metrics": null
   },
   "metadata": {
     "model_version": "0.1.0-mock",

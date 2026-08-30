@@ -77,14 +77,29 @@ The system explicitly refuses to analyse when:
 ## Data Lineage
 
 ```
-Raw CSV file (user upload)
-  -> C2 ingest: shape detection, header normalisation
-  -> C2 parser: period alias resolution, metric ID mapping
+Raw CSV / Multi-source JSON (user upload or direct API submission)
+  -> C2 ingest: shape detection, header normalisation, multi-source ingestion
+  -> C2 parser: period alias resolution, metric ID mapping, daily->monthly downsampling
   -> CompanyInput.metrics[].values (TimeSeriesPoint list)
-  -> C1 synthetic baseline lookup (sector YAML config)
+  -> C1 synthetic baseline lookup (sector YAML config + revenue-band size scaling)
   -> C1 feature extraction (slope, curvature, volatility)
   -> C1 z-score = (observed - baseline_mean) / baseline_std
   -> AnomalyReport.anomalies[].deviation.z_score
+  -> AnomalyReport.anomalies[].driver_rank & contribution_pct (causal attribution)
   -> C3 prescription target = AnomalyReport.anomalies[].deviation.expected_value
   -> EnrichedReport.prescriptions[].prescribed_adjustments[].target_value
+  -> Server-side Entitlement Filter (redacts deep stats for Executive role)
 ```
+
+---
+
+## Runtime Machine-Readable Contract (`GET /metrics/{sector_id}`)
+
+The system serves the active KPI semantic contract directly via `GET /metrics/{sector_id}` (e.g. `/metrics/TECH_SAAS`), exposing:
+1. **Metric Catalog**: `metric_id`, `display_name`, `category`, `unit`, `direction`, `valid_min`, `valid_max`, `accepted_aliases`, `description`, `calculation_formula`.
+2. **Driver Graph & Correlations**: Correlated drivers for each KPI (`drivers`) and the full sector correlation matrix (`correlation_matrix`).
+3. **Role-Based Entitlements**: Defined redaction policies per persona (`access_entitlements`):
+   - **Executive**: Receives business summaries, anomaly cards, highlights, and prescriptions; deep statistical diagnostics (`z_score`, `noise_confidence`, `slope`, `acceleration`, `driver_rank`) are redacted server-side.
+   - **Analyst**: Receives full access to all statistical parameters, noise filters, and causal metrics.
+4. **Lineage Manifest Spec**: Supported sources (CRM, ERP, Billing, Analytics, Manual CSV), cadences, and mixed-granularity reconciliation rules.
+
