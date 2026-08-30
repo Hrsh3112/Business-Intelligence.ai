@@ -57,6 +57,7 @@ lerna-debug.log*
 # Auto-generated agent docs (Next.js dev watcher)
 AGENTS.md
 CLAUDE.md
+docs/
 
 # ==============================================================================
 # Environment & Secrets (Never commit credentials)
@@ -103,3 +104,4 @@ ehthumbs.db
 *~
 *.sublime-project
 *.sublime-workspace
+
