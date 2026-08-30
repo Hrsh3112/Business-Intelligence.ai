@@ -428,6 +428,10 @@ The web application ships with four pre-generated scenario fixtures demonstratin
 
 ---
 
+## Deployment
+
+[**Live Demo**](https://business-intelligence-ai-eight.vercel.app)
+
 ## Quick Start
 
 ### Prerequisites
