@@ -420,7 +420,6 @@ The web application ships with four pre-generated scenario fixtures demonstratin
 |
 +-- data/samples/                # Sample CSV files for testing and demo
 +-- data/crm_fixture.json        # Daily CRM sample fixture for multi-source ingestion testing
-+-- docs/                        # Architecture, KPI contract, LLM vs. deterministic, quickstart
 +-- scripts/                     # dump_scenario_responses.py (generates fixture JSON)
 +-- .env.example                 # Environment configuration template
 +-- start.ps1                    # One-command startup (Windows / PowerShell)
@@ -474,12 +473,3 @@ pytest backend/
 ```
 
 ---
-
-## Documentation
-
-| Document | Contents |
-|---|---|
-| [Architecture](docs/architecture.md) | Component responsibilities, pipeline stages, failure paths |
-| [KPI Semantic Contract](docs/kpi-semantic-contract.md) | Metric definitions, baselines, severity thresholds, lineage |
-| [LLM vs. Deterministic](docs/llm-vs-deterministic.md) | Per-stage method breakdown with rationale |
-| [Quickstart](docs/quickstart.md) | Step-by-step local setup and deployment guide |
